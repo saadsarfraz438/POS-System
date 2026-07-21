@@ -1,0 +1,187 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Search } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { getProducts, getSalespersons, createSale } from '../services/api.js';
+
+const today = new Date().toISOString().slice(0, 10);
+
+export default function PosPage() {
+  const [products, setProducts] = useState([]);
+  const [salespersons, setSalespersons] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSalesperson, setSelectedSalesperson] = useState('');
+  const [invoiceNo, setInvoiceNo] = useState(`INV-${Date.now().toString().slice(-5)}`);
+  const [saleDate, setSaleDate] = useState(today);
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [productsRes, salespersonsRes] = await Promise.all([getProducts(), getSalespersons()]);
+        setProducts(productsRes.data || []);
+        setSalespersons(salespersonsRes.data || []);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    load();
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) return products.slice(0, 8);
+    return products.filter((product) => `${product.code} ${product.name}`.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
+  }, [products, searchTerm]);
+
+  const addItem = (product) => {
+    const existing = selectedItems.find((item) => item.id === product.id);
+    if (existing) {
+      setSelectedItems((current) => current.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+    } else {
+      setSelectedItems((current) => [...current, { id: product.id, name: product.name, retailPrice: Number(product.retailPrice || 0), qty: 1, discount: 0 }]);
+    }
+    setSearchTerm('');
+  };
+
+  const updateItem = (id, field, value) => {
+    setSelectedItems((current) => current.map((item) => item.id === id ? { ...item, [field]: field === 'qty' ? Number(value) : Number(value) } : item));
+  };
+
+  const removeItem = (id) => {
+    setSelectedItems((current) => current.filter((item) => item.id !== id));
+  };
+
+  const subtotal = selectedItems.reduce((sum, item) => sum + item.retailPrice * item.qty, 0);
+  const discount = selectedItems.reduce((sum, item) => sum + (item.discount || 0), 0);
+  const grandTotal = subtotal - discount;
+
+  const saveSale = async () => {
+    if (!selectedSalesperson || selectedItems.length === 0) {
+      Swal.fire('Validation', 'Choose a salesperson and add at least one product.', 'warning');
+      return;
+    }
+
+    const payload = {
+      invoiceNo,
+      saleDate,
+      salespersonId: Number(selectedSalesperson),
+      salespersonName: salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || '',
+      grandTotal,
+      items: selectedItems.map((item) => ({ productId: item.id, productName: item.name, quantity: item.qty, price: item.retailPrice, discount: item.discount, total: item.retailPrice * item.qty - item.discount })),
+    };
+
+    try {
+      await createSale(payload);
+      Swal.fire('Saved', 'Sale recorded successfully.', 'success');
+      setSelectedItems([]);
+      setSelectedSalesperson('');
+      setInvoiceNo(`INV-${Date.now().toString().slice(-5)}`);
+      setSaleDate(today);
+    } catch (error) {
+      Swal.fire('Error', 'Something went wrong.', 'error');
+    }
+  };
+
+  return (
+    <div>
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body">
+          <div className="row g-3 align-items-end">
+            <div className="col-12 col-md-3">
+              <label className="form-label">Salesperson</label>
+              <select className="form-select" value={selectedSalesperson} onChange={(e) => setSelectedSalesperson(e.target.value)}>
+                <option value="">Choose salesperson</option>
+                {salespersons.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+              </select>
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label">Sale Date</label>
+              <input className="form-control" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label">Invoice No</label>
+              <input className="form-control" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label">Search Product</label>
+              <div className="input-group">
+                <span className="input-group-text"><Search size={16} /></span>
+                <input className="form-control" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Start typing..." />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-4">
+        <div className="col-12 col-xl-8">
+          <div className="card shadow-sm border-0">
+            <div className="card-body">
+              <h5 className="mb-3">Product Search</h5>
+              <div className="row g-3">
+                {filteredProducts.map((product) => (
+                  <div className="col-12 col-md-6 col-lg-4" key={product.id}>
+                    <div className="border rounded-4 p-3 h-100 hover-card">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <div className="fw-semibold">{product.name}</div>
+                          <small className="text-muted">{product.code}</small>
+                        </div>
+                        <span className="badge bg-primary">Rs {Number(product.retailPrice || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="mt-3 d-flex justify-content-between align-items-center">
+                        <small className="text-muted">Stock available</small>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => addItem(product)}><Plus size={14} /> Add</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-xl-4">
+          <div className="card shadow-sm border-0">
+            <div className="card-body">
+              <h5 className="mb-3">Sale Items</h5>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Qty</th>
+                      <th>Retail</th>
+                      <th>Total</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedItems.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.name}</td>
+                        <td><input type="number" min="1" className="form-control form-control-sm" value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} /></td>
+                        <td>{item.retailPrice}</td>
+                        <td>{(item.retailPrice * item.qty).toLocaleString()}</td>
+                        <td><button className="btn btn-outline-danger btn-sm" onClick={() => removeItem(item.id)}><Trash2 size={14} /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="border-top pt-3 mt-3">
+                <div className="d-flex justify-content-between"><span>Sub Total</span><b>Rs {subtotal.toLocaleString()}</b></div>
+                <div className="d-flex justify-content-between"><span>Discount</span><b>Rs {discount.toLocaleString()}</b></div>
+                <div className="d-flex justify-content-between mt-2 fs-5"><span>Grand Total</span><b>Rs {grandTotal.toLocaleString()}</b></div>
+              </div>
+              <div className="d-flex gap-2 mt-4">
+                <button className="btn btn-primary" onClick={saveSale}>Save Sale</button>
+                <button className="btn btn-outline-secondary" onClick={() => setSelectedItems([])}>Clear</button>
+                <button className="btn btn-outline-info">Print</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
