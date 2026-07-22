@@ -3,13 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { getProducts, getSales, getSalespersons } from '../services/api.js';
 import { Link } from 'react-router-dom';
 
-const cards = [
-  { title: 'Total Products', value: '0', icon: Box, color: 'primary', path: '/products' },
-  { title: 'Total Salespersons', value: '0', icon: Users, color: 'success', path: '/salespersons' },
-  { title: "Today's Sales", value: '0', icon: CreditCard, color: 'warning', path: '/sales-records' },
-  { title: 'Revenue', value: 'Rs 0', icon: DollarSign, color: 'info', path: '/sales-records' },
-];
-
 export default function DashboardPage() {
   const [products, setProducts] = useState([]);
   const [salespersons, setSalespersons] = useState([]);
@@ -35,11 +28,21 @@ export default function DashboardPage() {
 
   const summary = useMemo(() => {
     const revenue = (sales || []).reduce((sum, sale) => sum + Number(sale.grandTotal || 0), 0);
+    const totalCost = (sales || []).reduce((sum, sale) => {
+      const cost = (sale.items || []).reduce((itemTotal, item) => {
+        const product = products.find((entry) => entry.id === item.productId);
+        return itemTotal + Number(product?.costPrice || 0) * Number(item.quantity || 0);
+      }, 0);
+      return sum + cost;
+    }, 0);
+    const profit = revenue - totalCost;
     return {
       products: products.length,
       salespersons: salespersons.length,
       salesToday: sales.filter((sale) => new Date(sale.saleDate).toDateString() === new Date().toDateString()).length,
       revenue,
+      totalCost,
+      profit,
     };
   }, [products, salespersons, sales]);
 
@@ -76,6 +79,40 @@ export default function DashboardPage() {
         })}
       </div>
 
+      <div className="row g-4 mb-4">
+        <div className="col-12 col-md-6">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-body">
+              <h5 className="mb-3">Profit Overview</h5>
+              <div className="d-flex justify-content-between mb-2"><span>Total Cost</span><strong>Rs {summary.totalCost.toLocaleString()}</strong></div>
+              <div className="d-flex justify-content-between"><span>Total Profit</span><strong className="text-success">Rs {summary.profit.toLocaleString()}</strong></div>
+            </div>
+          </div>
+        </div>
+        <div className="col-12 col-md-6">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-body">
+              <h5 className="mb-3">Salesperson Activity</h5>
+              {sales.length === 0 ? (
+                <p className="text-muted mb-0">No sales yet.</p>
+              ) : (
+                <div className="list-group list-group-flush">
+                  {sales.slice(0, 4).map((sale) => (
+                    <div className="list-group-item px-0 d-flex justify-content-between align-items-center" key={sale.id}>
+                      <div>
+                        <div className="fw-semibold">{sale.salespersonName || 'N/A'}</div>
+                        <small className="text-muted">{sale.invoiceNo}</small>
+                      </div>
+                      <span className="badge bg-primary">Rs {Number(sale.grandTotal || 0).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="row g-4">
         <div className="col-12 col-xl-8">
           <div className="card shadow-sm border-0">
@@ -94,18 +131,27 @@ export default function DashboardPage() {
                         <th>Invoice</th>
                         <th>Salesperson</th>
                         <th>Date</th>
-                        <th>Total</th>
+                        <th>Revenue</th>
+                        <th>Profit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sales.slice(0, 5).map((sale) => (
-                        <tr key={sale.id}>
-                          <td>{sale.invoiceNo}</td>
-                          <td>{sale.salespersonName || 'N/A'}</td>
-                          <td>{new Date(sale.saleDate).toLocaleDateString()}</td>
-                          <td>Rs {Number(sale.grandTotal || 0).toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {sales.slice(0, 5).map((sale) => {
+                        const cost = (sale.items || []).reduce((itemTotal, item) => {
+                          const product = products.find((entry) => entry.id === item.productId);
+                          return itemTotal + Number(product?.costPrice || 0) * Number(item.quantity || 0);
+                        }, 0);
+                        const profit = Number(sale.grandTotal || 0) - cost;
+                        return (
+                          <tr key={sale.id}>
+                            <td>{sale.invoiceNo}</td>
+                            <td>{sale.salespersonName || 'N/A'}</td>
+                            <td>{new Date(sale.saleDate).toLocaleDateString()}</td>
+                            <td>Rs {Number(sale.grandTotal || 0).toLocaleString()}</td>
+                            <td className="text-success">Rs {profit.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

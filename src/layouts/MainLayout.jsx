@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Boxes, Users, ShoppingCart, FileText, Settings, LogOut, Menu, Bell, Search } from 'lucide-react';
 
 const menu = [
@@ -12,13 +13,46 @@ const menu = [
 
 export default function MainLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const pageTitle = menu.find((item) => item.to === location.pathname)?.label || 'Dashboard';
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const loadNotifications = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const settings = JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
+        if (settings.notificationsEnabled === false) {
+          setNotifications([]);
+          return;
+        }
+        const stored = JSON.parse(window.localStorage.getItem('lumensoft-notifications') || '[]');
+        setNotifications(stored);
+      } catch {
+        setNotifications([]);
+      }
+    };
+
+    loadNotifications();
+    window.addEventListener('lumensoft:notifications', loadNotifications);
+    window.addEventListener('storage', loadNotifications);
+    return () => {
+      window.removeEventListener('lumensoft:notifications', loadNotifications);
+      window.removeEventListener('storage', loadNotifications);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    window.localStorage.removeItem('lumensoft-auth');
+    navigate('/login');
+  };
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="brand-mark">L</div>
+          <div className="brand-mark">LS</div>
           <div>
             <h4 className="mb-0">Lumensoft</h4>
             <small>POS Admin</small>
@@ -38,7 +72,7 @@ export default function MainLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="btn btn-outline-light btn-sm w-100">
+          <button className="btn btn-outline-light btn-sm w-100" onClick={handleLogout}>
             <LogOut size={16} className="me-2" /> Logout
           </button>
         </div>
@@ -57,10 +91,27 @@ export default function MainLayout() {
               <Search size={16} />
               <input type="text" placeholder="Search" />
             </div>
-            <button className="btn btn-light border-0 position-relative">
-              <Bell size={18} />
-              <span className="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">3</span>
-            </button>
+            <div className="position-relative">
+              <button className="btn btn-light border-0 position-relative" onClick={() => setShowNotifications((value) => !value)}>
+                <Bell size={18} />
+                <span className="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">{notifications.length}</span>
+              </button>
+              {showNotifications && (
+                <div className="position-absolute end-0 mt-2 bg-white border rounded shadow-sm p-2" style={{ width: 260, zIndex: 10 }}>
+                  <div className="fw-semibold mb-2">Notifications</div>
+                  {notifications.length === 0 ? (
+                    <div className="text-muted small">No notifications yet.</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div key={notification.id} className="small border-bottom py-2">
+                        <div>{notification.message}</div>
+                        <div className="text-muted">{new Date(notification.createdAt).toLocaleString()}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <div className="user-pill">
               <div className="avatar">A</div>
               <div>

@@ -12,6 +12,8 @@ const initialPayload = {
   status: 'Active',
 };
 
+const getErrorMessage = (error) => error?.response?.data?.message || 'Something went wrong.';
+
 export default function SalespersonsPage() {
   const [salespersons, setSalespersons] = useState([]);
   const [form, setForm] = useState(initialPayload);
@@ -36,24 +38,33 @@ export default function SalespersonsPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.code || !form.name || !form.phone || !form.email) {
-      Swal.fire('Validation', 'Please fill all required fields.', 'warning');
+    const payload = {
+      ...form,
+      code: form.code.trim(),
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      address: form.address.trim(),
+    };
+
+    if (!payload.code || !payload.name || !payload.phone || !payload.email || !payload.address) {
+      Swal.fire('Validation', 'Please fill all required fields including address.', 'warning');
       return;
     }
 
     try {
       if (editingId) {
-        await updateSalesperson(editingId, form);
+        await updateSalesperson(editingId, payload);
         Swal.fire('Updated', 'Salesperson updated successfully.', 'success');
       } else {
-        await createSalesperson(form);
+        await createSalesperson(payload);
         Swal.fire('Saved', 'Salesperson saved successfully.', 'success');
       }
       setForm(initialPayload);
       setEditingId(null);
       loadSalespersons();
     } catch (error) {
-      Swal.fire('Error', 'Something went wrong.', 'error');
+      Swal.fire('Error', getErrorMessage(error), 'error');
     }
   };
 
@@ -85,7 +96,7 @@ export default function SalespersonsPage() {
       Swal.fire('Deleted', 'Salesperson deleted successfully.', 'success');
       loadSalespersons();
     } catch (error) {
-      Swal.fire('Error', 'Something went wrong.', 'error');
+      Swal.fire('Error', getErrorMessage(error), 'error');
     }
   };
 

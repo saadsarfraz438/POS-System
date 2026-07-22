@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Eye, Search } from 'lucide-react';
+import { Pencil, Trash2, Eye, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../services/api.js';
 
@@ -12,6 +12,8 @@ const initialPayload = {
   comment: '',
   status: 'Active',
 };
+
+const getErrorMessage = (error) => error?.response?.data?.message || 'Something went wrong.';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -39,12 +41,24 @@ export default function ProductsPage() {
     event.preventDefault();
     const payload = {
       ...form,
+      code: form.code.trim(),
+      name: form.name.trim(),
       costPrice: Number(form.costPrice),
       retailPrice: Number(form.retailPrice),
     };
 
-    if (!payload.code || !payload.name || !payload.costPrice || !payload.retailPrice) {
+    if (!payload.code || !payload.name || !Number.isFinite(payload.costPrice) || !Number.isFinite(payload.retailPrice)) {
       Swal.fire('Validation', 'Please fill all required fields.', 'warning');
+      return;
+    }
+
+    if (payload.costPrice <= 0 || payload.retailPrice <= 0) {
+      Swal.fire('Validation', 'Prices must be greater than zero.', 'warning');
+      return;
+    }
+
+    if (payload.retailPrice <= payload.costPrice) {
+      Swal.fire('Validation', 'Retail price must be greater than cost price.', 'warning');
       return;
     }
 
@@ -60,7 +74,7 @@ export default function ProductsPage() {
       setEditingId(null);
       loadProducts();
     } catch (error) {
-      Swal.fire('Error', 'Something went wrong.', 'error');
+      Swal.fire('Error', getErrorMessage(error), 'error');
     }
   };
 
@@ -93,7 +107,7 @@ export default function ProductsPage() {
       Swal.fire('Deleted', 'Product deleted successfully.', 'success');
       loadProducts();
     } catch (error) {
-      Swal.fire('Error', 'Something went wrong.', 'error');
+      Swal.fire('Error', getErrorMessage(error), 'error');
     }
   };
 

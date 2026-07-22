@@ -30,7 +30,7 @@ app.UseHttpsRedirection();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LumensoftDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 
     if (!db.Products.Any())
     {
@@ -52,9 +52,33 @@ using (var scope = app.Services.CreateScope())
     db.SaveChanges();
 }
 
-app.MapGet("/api/products", async (LumensoftDbContext db) => await db.Products.ToListAsync());
+app.MapGet("/api/products", async (LumensoftDbContext db) => await db.Products.OrderBy(p => p.Code).ToListAsync());
 app.MapPost("/api/products", async (Product product, LumensoftDbContext db) =>
 {
+    if (string.IsNullOrWhiteSpace(product.Code) || string.IsNullOrWhiteSpace(product.Name))
+    {
+        return Results.BadRequest(new { message = "Product code and name are required." });
+    }
+
+    if (product.CostPrice <= 0 || product.RetailPrice <= 0)
+    {
+        return Results.BadRequest(new { message = "Cost price and retail price must be greater than zero." });
+    }
+
+    if (product.RetailPrice <= product.CostPrice)
+    {
+        return Results.BadRequest(new { message = "Retail price must be greater than cost price." });
+    }
+
+    var normalizedCode = product.Code.Trim().ToLowerInvariant();
+    var duplicate = await db.Products.AnyAsync(p => p.Code.ToLower() == normalizedCode);
+    if (duplicate)
+    {
+        return Results.Conflict(new { message = "Product code already exists." });
+    }
+
+    product.Code = product.Code.Trim();
+    product.Name = product.Name.Trim();
     db.Products.Add(product);
     await db.SaveChangesAsync();
     return Results.Created($"/api/products/{product.Id}", product);
@@ -63,8 +87,30 @@ app.MapPut("/api/products/{id}", async (int id, Product updated, LumensoftDbCont
 {
     var existing = await db.Products.FindAsync(id);
     if (existing is null) return Results.NotFound();
-    existing.Code = updated.Code;
-    existing.Name = updated.Name;
+
+    if (string.IsNullOrWhiteSpace(updated.Code) || string.IsNullOrWhiteSpace(updated.Name))
+    {
+        return Results.BadRequest(new { message = "Product code and name are required." });
+    }
+
+    if (updated.CostPrice <= 0 || updated.RetailPrice <= 0)
+    {
+        return Results.BadRequest(new { message = "Cost price and retail price must be greater than zero." });
+    }
+
+    if (updated.RetailPrice <= updated.CostPrice)
+    {
+        return Results.BadRequest(new { message = "Retail price must be greater than cost price." });
+    }
+
+    var duplicate = await db.Products.AnyAsync(p => p.Id != id && p.Code.ToLower() == updated.Code.Trim().ToLower());
+    if (duplicate)
+    {
+        return Results.Conflict(new { message = "Product code already exists." });
+    }
+
+    existing.Code = updated.Code.Trim();
+    existing.Name = updated.Name.Trim();
     existing.CostPrice = updated.CostPrice;
     existing.RetailPrice = updated.RetailPrice;
     existing.ImageUrl = updated.ImageUrl;
@@ -82,9 +128,27 @@ app.MapDelete("/api/products/{id}", async (int id, LumensoftDbContext db) =>
     return Results.NoContent();
 });
 
-app.MapGet("/api/salespersons", async (LumensoftDbContext db) => await db.Salespersons.ToListAsync());
+app.MapGet("/api/salespersons", async (LumensoftDbContext db) => await db.Salespersons.OrderBy(s => s.Code).ToListAsync());
 app.MapPost("/api/salespersons", async (Salesperson salesperson, LumensoftDbContext db) =>
 {
+    if (string.IsNullOrWhiteSpace(salesperson.Code) || string.IsNullOrWhiteSpace(salesperson.Name) || string.IsNullOrWhiteSpace(salesperson.Phone) || string.IsNullOrWhiteSpace(salesperson.Email) || string.IsNullOrWhiteSpace(salesperson.Address))
+    {
+        return Results.BadRequest(new { message = "Salesperson code, name, phone, email, and address are required." });
+    }
+
+    var duplicateCode = await db.Salespersons.AnyAsync(s => s.Code.ToLower() == salesperson.Code.Trim().ToLower());
+    var duplicatePhone = await db.Salespersons.AnyAsync(s => s.Phone.ToLower() == salesperson.Phone.Trim().ToLower());
+    var duplicateEmail = await db.Salespersons.AnyAsync(s => s.Email.ToLower() == salesperson.Email.Trim().ToLower());
+    if (duplicateCode || duplicatePhone || duplicateEmail)
+    {
+        return Results.Conflict(new { message = "Salesperson code, phone, or email already exists." });
+    }
+
+    salesperson.Code = salesperson.Code.Trim();
+    salesperson.Name = salesperson.Name.Trim();
+    salesperson.Phone = salesperson.Phone.Trim();
+    salesperson.Email = salesperson.Email.Trim();
+    salesperson.Address = salesperson.Address.Trim();
     db.Salespersons.Add(salesperson);
     await db.SaveChangesAsync();
     return Results.Created($"/api/salespersons/{salesperson.Id}", salesperson);
@@ -93,11 +157,25 @@ app.MapPut("/api/salespersons/{id}", async (int id, Salesperson updated, Lumenso
 {
     var existing = await db.Salespersons.FindAsync(id);
     if (existing is null) return Results.NotFound();
-    existing.Code = updated.Code;
-    existing.Name = updated.Name;
-    existing.Phone = updated.Phone;
-    existing.Email = updated.Email;
-    existing.Address = updated.Address;
+
+    if (string.IsNullOrWhiteSpace(updated.Code) || string.IsNullOrWhiteSpace(updated.Name) || string.IsNullOrWhiteSpace(updated.Phone) || string.IsNullOrWhiteSpace(updated.Email) || string.IsNullOrWhiteSpace(updated.Address))
+    {
+        return Results.BadRequest(new { message = "Salesperson code, name, phone, email, and address are required." });
+    }
+
+    var duplicateCode = await db.Salespersons.AnyAsync(s => s.Id != id && s.Code.ToLower() == updated.Code.Trim().ToLower());
+    var duplicatePhone = await db.Salespersons.AnyAsync(s => s.Id != id && s.Phone.ToLower() == updated.Phone.Trim().ToLower());
+    var duplicateEmail = await db.Salespersons.AnyAsync(s => s.Id != id && s.Email.ToLower() == updated.Email.Trim().ToLower());
+    if (duplicateCode || duplicatePhone || duplicateEmail)
+    {
+        return Results.Conflict(new { message = "Salesperson code, phone, or email already exists." });
+    }
+
+    existing.Code = updated.Code.Trim();
+    existing.Name = updated.Name.Trim();
+    existing.Phone = updated.Phone.Trim();
+    existing.Email = updated.Email.Trim();
+    existing.Address = updated.Address.Trim();
     existing.Status = updated.Status;
     await db.SaveChangesAsync();
     return Results.Ok(existing);
@@ -111,9 +189,33 @@ app.MapDelete("/api/salespersons/{id}", async (int id, LumensoftDbContext db) =>
     return Results.NoContent();
 });
 
-app.MapGet("/api/sales", async (LumensoftDbContext db) => await db.Sales.Include(s => s.Items).ToListAsync());
+app.MapGet("/api/sales", async (LumensoftDbContext db) => await db.Sales.Include(s => s.Items).OrderByDescending(s => s.SaleDate).ToListAsync());
 app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
 {
+    if (string.IsNullOrWhiteSpace(sale.InvoiceNo))
+    {
+        return Results.BadRequest(new { message = "Invoice number is required." });
+    }
+
+    if (sale.Items.Count == 0)
+    {
+        return Results.BadRequest(new { message = "At least one product is required." });
+    }
+
+    if (sale.Items.Any(item => item.Quantity <= 0))
+    {
+        return Results.BadRequest(new { message = "Each product quantity must be greater than zero." });
+    }
+
+    var duplicateInvoice = await db.Sales.AnyAsync(s => s.InvoiceNo.ToLower() == sale.InvoiceNo.Trim().ToLower());
+    if (duplicateInvoice)
+    {
+        return Results.Conflict(new { message = "Invoice number already exists." });
+    }
+
+    sale.InvoiceNo = sale.InvoiceNo.Trim();
+    sale.SaleDate = sale.SaleDate == default ? DateTime.Now : sale.SaleDate;
+    sale.GrandTotal = sale.Items.Sum(item => item.Total);
     db.Sales.Add(sale);
     await db.SaveChangesAsync();
     return Results.Created($"/api/sales/{sale.Id}", sale);

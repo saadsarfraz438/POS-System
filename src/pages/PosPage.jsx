@@ -5,6 +5,23 @@ import { getProducts, getSalespersons, createSale } from '../services/api.js';
 
 const today = new Date().toISOString().slice(0, 10);
 
+const getSettings = () => {
+  if (typeof window === 'undefined') return { taxRate: 0, printEnabled: true };
+  try {
+    return JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
+  } catch {
+    return { taxRate: 0, printEnabled: true };
+  }
+};
+
+const addNotification = (message) => {
+  if (typeof window === 'undefined') return;
+  const stored = JSON.parse(window.localStorage.getItem('lumensoft-notifications') || '[]');
+  const next = [{ id: Date.now(), message, createdAt: new Date().toISOString() }, ...stored].slice(0, 8);
+  window.localStorage.setItem('lumensoft-notifications', JSON.stringify(next));
+  window.dispatchEvent(new Event('lumensoft:notifications'));
+};
+
 export default function PosPage() {
   const [products, setProducts] = useState([]);
   const [salespersons, setSalespersons] = useState([]);
@@ -13,6 +30,7 @@ export default function PosPage() {
   const [invoiceNo, setInvoiceNo] = useState(`INV-${Date.now().toString().slice(-5)}`);
   const [saleDate, setSaleDate] = useState(today);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [settings, setSettings] = useState(getSettings);
 
   useEffect(() => {
     const load = async () => {
@@ -25,6 +43,13 @@ export default function PosPage() {
       }
     };
     load();
+    const syncSettings = () => setSettings(getSettings());
+    window.addEventListener('storage', syncSettings);
+    window.addEventListener('lumensoft:settings', syncSettings);
+    return () => {
+      window.removeEventListener('storage', syncSettings);
+      window.removeEventListener('lumensoft:settings', syncSettings);
+    };
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -43,7 +68,12 @@ export default function PosPage() {
   };
 
   const updateItem = (id, field, value) => {
-    setSelectedItems((current) => current.map((item) => item.id === id ? { ...item, [field]: field === 'qty' ? Number(value) : Number(value) } : item));
+    const numericValue = Number(value);
+    if (field === 'qty' && numericValue <= 0) {
+      removeItem(id);
+      return;
+    }
+    setSelectedItems((current) => current.map((item) => item.id === id ? { ...item, [field]: numericValue } : item));
   };
 
   const removeItem = (id) => {
@@ -52,7 +82,9 @@ export default function PosPage() {
 
   const subtotal = selectedItems.reduce((sum, item) => sum + item.retailPrice * item.qty, 0);
   const discount = selectedItems.reduce((sum, item) => sum + (item.discount || 0), 0);
-  const grandTotal = subtotal - discount;
+  const taxRate = Number(settings.taxRate || 0);
+  const taxAmount = subtotal * (taxRate / 100);
+  const grandTotal = subtotal + taxAmount - discount;
 
   const saveSale = async () => {
     if (!selectedSalesperson || selectedItems.length === 0) {
@@ -60,24 +92,68 @@ export default function PosPage() {
       return;
     }
 
+    const invalidQty = selectedItems.some((item) => Number(item.qty) <= 0);
+    if (invalidQty) {
+      Swal.fire('Validation', 'Each product quantity must be greater than zero.', 'warning');
+      return;
+    }
+
+    const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || '';
     const payload = {
-      invoiceNo,
+      invoiceNo: invoiceNo.trim(),
       saleDate,
       salespersonId: Number(selectedSalesperson),
-      salespersonName: salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || '',
+      salespersonName,
       grandTotal,
       items: selectedItems.map((item) => ({ productId: item.id, productName: item.name, quantity: item.qty, price: item.retailPrice, discount: item.discount, total: item.retailPrice * item.qty - item.discount })),
     };
 
     try {
       await createSale(payload);
+      addNotification(`${salespersonName || 'Salesperson'} completed invoice ${payload.invoiceNo}`);
       Swal.fire('Saved', 'Sale recorded successfully.', 'success');
       setSelectedItems([]);
       setSelectedSalesperson('');
       setInvoiceNo(`INV-${Date.now().toString().slice(-5)}`);
       setSaleDate(today);
     } catch (error) {
-      Swal.fire('Error', 'Something went wrong.', 'error');
+      const message = error?.response?.data?.message || 'Something went wrong.';
+      Swal.fire('Error', message, 'error');
+    }
+  };
+
+  const handlePrintReceipt = () => {
+    const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || 'N/A';
+    const receipt = [
+      'Lumensoft POS Receipt',
+      `Invoice: ${invoiceNo}`,
+      `Salesperson: ${salespersonName}`,
+      `Date: ${saleDate}`,
+      '---',
+      ...selectedItems.map((item) => `${item.name} x${item.qty} = Rs ${Number(item.retailPrice * item.qty).toLocaleString()}`),
+      '---',
+      `Subtotal: Rs ${subtotal.toLocaleString()}`,
+      `Tax (${taxRate}%): Rs ${taxAmount.toLocaleString()}`,
+      `Discount: Rs ${discount.toLocaleString()}`,
+      `Grand Total: Rs ${grandTotal.toLocaleString()}`,
+    ].join('\n');
+
+    const blob = new Blob([receipt], { type: 'text/plain;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${invoiceNo || 'receipt'}.txt`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+
+    if (settings.printEnabled !== false) {
+      const printWindow = window.open('', '_blank', 'width=600,height=800');
+      if (printWindow) {
+        printWindow.document.write(`<pre>${receipt.replace(/</g, '&lt;')}</pre>`);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      }
     }
   };
 
@@ -170,13 +246,14 @@ export default function PosPage() {
               </div>
               <div className="border-top pt-3 mt-3">
                 <div className="d-flex justify-content-between"><span>Sub Total</span><b>Rs {subtotal.toLocaleString()}</b></div>
+                <div className="d-flex justify-content-between"><span>Tax</span><b>Rs {taxAmount.toLocaleString()}</b></div>
                 <div className="d-flex justify-content-between"><span>Discount</span><b>Rs {discount.toLocaleString()}</b></div>
                 <div className="d-flex justify-content-between mt-2 fs-5"><span>Grand Total</span><b>Rs {grandTotal.toLocaleString()}</b></div>
               </div>
               <div className="d-flex gap-2 mt-4">
                 <button className="btn btn-primary" onClick={saveSale}>Save Sale</button>
                 <button className="btn btn-outline-secondary" onClick={() => setSelectedItems([])}>Clear</button>
-                <button className="btn btn-outline-info">Print</button>
+                <button className="btn btn-outline-info" onClick={handlePrintReceipt} disabled={selectedItems.length === 0}>Print</button>
               </div>
             </div>
           </div>
