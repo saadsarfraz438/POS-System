@@ -10,10 +10,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -23,10 +19,12 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: #f5f7fb;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.theme-dark body {
-  background: #020617;
+html.theme-dark,
+html.theme-dark body {
+  background: #050816;
   color: #f8fafc;
 }
 
@@ -34,6 +32,22 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  color: #0f172a;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }

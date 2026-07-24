@@ -17,7 +17,7 @@ import { getDefaultPathForRole, getStoredSession } from './lib/auth.js';
 function ProtectedRoute({ children, roles }: { children: ReactNode; roles: Array<'admin' | 'salesperson'> }) {
   const session = getStoredSession();
 
-  if (!session) {
+  if (!session || !session.role) {
     return <Navigate to="/login" replace />;
   }
 
@@ -30,7 +30,7 @@ function ProtectedRoute({ children, roles }: { children: ReactNode; roles: Array
 
 function HomeRedirect() {
   const session = getStoredSession();
-  return <Navigate to={session ? getDefaultPathForRole(session.role) : '/login'} replace />;
+  return <Navigate to={session?.role ? getDefaultPathForRole(session.role) : '/login'} replace />;
 }
 
 export default function App() {

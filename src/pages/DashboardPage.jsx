@@ -1,9 +1,11 @@
 import { ArrowUpRight, Box, Coins, CoinsIcon, CreditCard, DollarSign, HandCoinsIcon, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { getProducts, getSales, getSalespersons } from '../services/api.js';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function DashboardPage() {
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/sales') ? '/sales' : '/admin';
   const [products, setProducts] = useState([]);
   const [salespersons, setSalespersons] = useState([]);
   const [sales, setSales] = useState([]);
@@ -52,10 +54,10 @@ export default function DashboardPage() {
     <div>
       <div className="row g-4 mb-4">
         {[
-          { title: 'Total Products', value: summary.products, icon: Box, color: 'primary', path: '/products' },
-          { title: 'Total Salespersons', value: summary.salespersons, icon: Users, color: 'primary', path: '/salespersons' },
-          { title: "Today's Sales", value: summary.salesToday, icon: CreditCard, color: 'primary', path: '/sales-records' },
-          { title: 'Revenue', value: `Rs ${summary.revenue.toLocaleString()}`, icon: HandCoinsIcon, color: 'primary', path: '/sales-records' },
+          { title: 'Total Products', value: summary.products, icon: Box, color: 'primary', path: `${basePath}/products` },
+          { title: 'Total Salespersons', value: summary.salespersons, icon: Users, color: 'primary', path: `${basePath}/salespersons` },
+          { title: "Today's Sales", value: summary.salesToday, icon: CreditCard, color: 'primary', path: `${basePath}/sales-records` },
+          { title: 'Revenue', value: `Rs ${summary.revenue.toLocaleString()}`, icon: HandCoinsIcon, color: 'primary', path: `${basePath}/sales-records` },
         ].map((card) => {
           const Icon = card.icon;
           return (
@@ -121,7 +123,7 @@ export default function DashboardPage() {
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="mb-0">Recent Sales</h5>
-                <Link to="/sales-records" className="btn btn-outline-primary btn-sm">View All</Link>
+                <Link to={`${basePath}/sales-records`} className="btn btn-outline-primary btn-sm">View All</Link>
               </div>
               {loading ? (
                 <div className="text-center py-5"><div className="spinner-border text-primary" role="status" /><p className="mt-2">Loading...</p></div>
@@ -167,7 +169,7 @@ export default function DashboardPage() {
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="mb-0">Recent Products</h5>
-                <Link to="/products" className="btn btn-outline-primary btn-sm">Manage</Link>
+                <Link to={`${basePath}/products`} className="btn btn-outline-primary btn-sm">Manage</Link>
               </div>
               {loading ? (
                 <div className="text-center py-5"><div className="spinner-border text-primary" role="status" /></div>

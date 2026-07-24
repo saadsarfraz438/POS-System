@@ -2,16 +2,18 @@ export const AUTH_SESSION_KEY = 'lumensoft-session';
 export const AUTH_FLAG_KEY = 'lumensoft-auth';
 export const SETTINGS_KEY = 'lumensoft-settings';
 
+export type AppRole = 'admin' | 'salesperson';
+
 export const AUTH_PROFILES = {
   admin: {
-    role: 'admin',
+    role: 'admin' as const,
     label: 'Admin',
     email: 'admin@lumensoft.com',
     password: 'admin123',
     defaultPath: '/admin/dashboard',
   },
   salesperson: {
-    role: 'salesperson',
+    role: 'salesperson' as const,
     label: 'Salesperson',
     email: 'salesperson@lumensoft.com',
     password: 'sales123',
@@ -47,7 +49,7 @@ export const DEFAULT_SETTINGS = {
   darkMode: false,
 };
 
-const readJson = (key, fallback) => {
+const readJson = (key: string, fallback: unknown) => {
   if (typeof window === 'undefined') {
     return fallback;
   }
@@ -67,19 +69,19 @@ export const getStoredSession = () => {
     return null;
   }
 
-  const stored = readJson(AUTH_SESSION_KEY, null);
+  const stored = readJson(AUTH_SESSION_KEY, null) as { role?: AppRole; email?: string } | null;
   if (stored?.role && stored?.email) {
     return stored;
   }
 
   if (window.localStorage.getItem(AUTH_FLAG_KEY) === 'true') {
-    return { role: 'admin', email: AUTH_PROFILES.admin.email };
+    return { role: 'admin' as const, email: AUTH_PROFILES.admin.email };
   }
 
   return null;
 };
 
-export const saveSession = (session) => {
+export const saveSession = (session: { role: AppRole; email: string }) => {
   if (typeof window === 'undefined') {
     return;
   }
@@ -97,6 +99,6 @@ export const clearSession = () => {
   window.localStorage.removeItem(AUTH_FLAG_KEY);
 };
 
-export const getDefaultPathForRole = (role) => AUTH_PROFILES[role]?.defaultPath || '/login';
+export const getDefaultPathForRole = (role: AppRole) => AUTH_PROFILES[role]?.defaultPath || '/login';
 
-export const getRoleMenu = (role) => ROLE_MENUS[role] || ROLE_MENUS.salesperson;
+export const getRoleMenu = (role: AppRole) => ROLE_MENUS[role] || ROLE_MENUS.salesperson;
