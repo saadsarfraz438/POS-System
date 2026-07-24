@@ -156,6 +156,9 @@ export default function PosPage() {
       Swal.fire('Error', message, 'error');
     }
   };
+  
+/* Custom receipt printing handler */
+
 
   const handlePrintReceipt = () => {
     const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || 'N/A';

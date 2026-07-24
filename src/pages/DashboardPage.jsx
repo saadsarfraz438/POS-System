@@ -1,4 +1,4 @@
-import { ArrowUpRight, Box, CreditCard, DollarSign, Users } from 'lucide-react';
+import { ArrowUpRight, Box, Coins, CoinsIcon, CreditCard, DollarSign, HandCoinsIcon, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { getProducts, getSales, getSalespersons } from '../services/api.js';
 import { Link } from 'react-router-dom';
@@ -46,14 +46,16 @@ export default function DashboardPage() {
     };
   }, [products, salespersons, sales]);
 
+/*Dashboard page component that displays summary cards and recent sales/products. */
+
   return (
     <div>
       <div className="row g-4 mb-4">
         {[
           { title: 'Total Products', value: summary.products, icon: Box, color: 'primary', path: '/products' },
-          { title: 'Total Salespersons', value: summary.salespersons, icon: Users, color: 'success', path: '/salespersons' },
-          { title: "Today's Sales", value: summary.salesToday, icon: CreditCard, color: 'warning', path: '/sales-records' },
-          { title: 'Revenue', value: `Rs ${summary.revenue.toLocaleString()}`, icon: DollarSign, color: 'info', path: '/sales-records' },
+          { title: 'Total Salespersons', value: summary.salespersons, icon: Users, color: 'primary', path: '/salespersons' },
+          { title: "Today's Sales", value: summary.salesToday, icon: CreditCard, color: 'primary', path: '/sales-records' },
+          { title: 'Revenue', value: `Rs ${summary.revenue.toLocaleString()}`, icon: HandCoinsIcon, color: 'primary', path: '/sales-records' },
         ].map((card) => {
           const Icon = card.icon;
           return (
