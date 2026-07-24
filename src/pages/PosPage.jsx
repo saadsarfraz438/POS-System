@@ -3,6 +3,7 @@ import { Plus, Trash2, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 import SectionCard from '../components/SectionCard.jsx';
 import { getProducts, getSalespersons, createSale } from '../services/api.js';
+import { getStoredSettings } from '../lib/auth.js';
 
 const getTodayDateValue = () => {
   const now = new Date();
@@ -13,15 +14,6 @@ const getTodayDateValue = () => {
 };
 
 const today = getTodayDateValue();
-
-const getSettings = () => {
-  if (typeof window === 'undefined') return { taxRate: 0, printEnabled: true, discountEnabled: true, darkMode: false };
-  try {
-    return { taxRate: 0, printEnabled: true, discountEnabled: true, darkMode: false, ...JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}') };
-  } catch {
-    return { taxRate: 0, printEnabled: true, discountEnabled: true, darkMode: false };
-  }
-};
 
 const addNotification = (message) => {
   if (typeof window === 'undefined') return;
@@ -39,7 +31,7 @@ export default function PosPage() {
   const [invoiceNo, setInvoiceNo] = useState(`INV-${Date.now().toString().slice(-5)}`);
   const [saleDate, setSaleDate] = useState(today);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [settings, setSettings] = useState(getSettings);
+  const [settings, setSettings] = useState(getStoredSettings);
 
   useEffect(() => {
     const load = async () => {
@@ -51,8 +43,9 @@ export default function PosPage() {
         console.error(error);
       }
     };
+
     load();
-    const syncSettings = () => setSettings(getSettings());
+    const syncSettings = () => setSettings(getStoredSettings());
     window.addEventListener('storage', syncSettings);
     window.addEventListener('lumensoft:settings', syncSettings);
     return () => {
@@ -66,12 +59,24 @@ export default function PosPage() {
     return products.filter((product) => `${product.code} ${product.name}`.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
   }, [products, searchTerm]);
 
+  const lineDiscount = (item) => {
+    const lineSubtotal = item.retailPrice * item.qty;
+    if (item.discountType === 'cash') {
+      return Math.min(Math.max(Number(item.discountValue || 0), 0), lineSubtotal);
+    }
+
+    const percentage = Math.min(Math.max(Number(item.discountValue || 0), 0), 100);
+    return lineSubtotal * (percentage / 100);
+  };
+
   const addItem = (product) => {
     const existing = selectedItems.find((item) => item.id === product.id);
+    const defaultDiscountType = settings.discountMode === 'cash' ? 'cash' : 'percentage';
+
     if (existing) {
       setSelectedItems((current) => current.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
     } else {
-      setSelectedItems((current) => [...current, { id: product.id, name: product.name, retailPrice: Number(product.retailPrice || 0), qty: 1, discount: 0 }]);
+      setSelectedItems((current) => [...current, { id: product.id, name: product.name, retailPrice: Number(product.retailPrice || 0), qty: 1, discountType: defaultDiscountType, discountValue: 0 }]);
     }
     setSearchTerm('');
   };
@@ -90,10 +95,11 @@ export default function PosPage() {
       if (field === 'qty') {
         return [{ ...item, qty: Number(value) }];
       }
-      if (field === 'discount') {
-        const maxAllowed = item.retailPrice * item.qty;
-        const numericValue = Math.max(0, Math.min(Number(value || 0), maxAllowed));
-        return [{ ...item, discount: numericValue }];
+      if (field === 'discountType') {
+        return [{ ...item, discountType: value }];
+      }
+      if (field === 'discountValue') {
+        return [{ ...item, discountValue: Math.max(0, Number(value || 0)) }];
       }
       return [{ ...item, [field]: Number(value) }];
     }));
@@ -104,10 +110,10 @@ export default function PosPage() {
   };
 
   const subtotal = selectedItems.reduce((sum, item) => sum + item.retailPrice * item.qty, 0);
-  const discount = selectedItems.reduce((sum, item) => sum + (item.discount || 0), 0);
+  const discount = selectedItems.reduce((sum, item) => sum + lineDiscount(item), 0);
   const taxRate = Number(settings.taxRate || 0);
   const taxAmount = subtotal * (taxRate / 100);
-  const grandTotal = subtotal + taxAmount - discount;
+  const grandTotal = Math.max(0, subtotal + taxAmount - discount);
   const discountEnabled = settings.discountEnabled !== false;
 
   const saveSale = async () => {
@@ -122,9 +128,15 @@ export default function PosPage() {
       return;
     }
 
-    const invalidDiscounts = selectedItems.some((item) => Number(item.discount || 0) < 0 || Number(item.discount || 0) > item.retailPrice * item.qty);
+    const invalidDiscounts = selectedItems.some((item) => {
+      const amount = Number(item.discountValue || 0);
+      const lineSubtotal = item.retailPrice * item.qty;
+      return item.discountType === 'cash'
+        ? amount < 0 || amount > lineSubtotal
+        : amount < 0 || amount > 100;
+    });
     if (invalidDiscounts) {
-      Swal.fire('Validation', 'Discounts must be zero or more and cannot exceed the line total.', 'warning');
+      Swal.fire('Validation', 'Percentage discounts must be between 0 and 100, and cash discounts cannot exceed the line total.', 'warning');
       return;
     }
 
@@ -140,7 +152,17 @@ export default function PosPage() {
       salespersonId: Number(selectedSalesperson),
       salespersonName,
       grandTotal,
-      items: selectedItems.map((item) => ({ productId: item.id, productName: item.name, quantity: item.qty, price: item.retailPrice, discount: item.discount, total: item.retailPrice * item.qty - item.discount })),
+      items: selectedItems.map((item) => {
+        const discountAmount = lineDiscount(item);
+        return {
+          productId: item.id,
+          productName: item.name,
+          quantity: item.qty,
+          price: item.retailPrice,
+          discount: discountAmount,
+          total: item.retailPrice * item.qty - discountAmount,
+        };
+      }),
     };
 
     try {
@@ -156,13 +178,11 @@ export default function PosPage() {
       Swal.fire('Error', message, 'error');
     }
   };
-  
-/* Custom receipt printing handler */
-
 
   const handlePrintReceipt = () => {
     const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || 'N/A';
     const receiptDateTime = new Date().toLocaleString();
+    const formatDiscount = (item) => item.discountType === 'cash' ? `Rs ${Number(item.discountValue || 0).toLocaleString()}` : `${Number(item.discountValue || 0).toLocaleString()}%`;
     const receipt = [
       'Lumensoft POS ',
       'Customer Receipt',
@@ -175,7 +195,7 @@ export default function PosPage() {
       ' ',
       'Description(B)  Qty  price(Rs)',
       ' ',
-      ...selectedItems.map((item) => `${item.name} x${item.qty} = Rs ${Number(item.retailPrice * item.qty - (item.discount || 0)).toLocaleString()}`),
+      ...selectedItems.map((item) => `${item.name} x${item.qty} - ${formatDiscount(item)} = Rs ${Number(item.retailPrice * item.qty - lineDiscount(item)).toLocaleString()}`),
       '   ',
       '------------------------------',
       `Subtotal: Rs ${subtotal.toLocaleString()}`,
@@ -284,10 +304,23 @@ export default function PosPage() {
                       <td>{item.retailPrice}</td>
                       {discountEnabled ? (
                         <td>
-                          <input type="number" min="0" className="form-control form-control-sm" value={item.discount || 0} onChange={(e) => updateItem(item.id, 'discount', e.target.value)} />
+                          <div className="d-flex gap-2">
+                            <select className="form-select form-select-sm w-auto" value={item.discountType || settings.discountMode || 'percentage'} onChange={(e) => updateItem(item.id, 'discountType', e.target.value)}>
+                              <option value="percentage">%</option>
+                              <option value="cash">Rs</option>
+                            </select>
+                            <input
+                              type="number"
+                              min="0"
+                              step={item.discountType === 'cash' ? '0.01' : '1'}
+                              className="form-control form-control-sm"
+                              value={item.discountValue || 0}
+                              onChange={(e) => updateItem(item.id, 'discountValue', e.target.value)}
+                            />
+                          </div>
                         </td>
                       ) : null}
-                      <td>{(item.retailPrice * item.qty - (item.discount || 0)).toLocaleString()}</td>
+                      <td>{(item.retailPrice * item.qty - lineDiscount(item)).toLocaleString()}</td>
                       <td><button className="btn btn-outline-danger btn-sm" onClick={() => removeItem(item.id)}><Trash2 size={14} /></button></td>
                     </tr>
                   ))}

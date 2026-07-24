@@ -1,20 +1,25 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Boxes, Users, ShoppingCart, FileText, Settings, LogOut, Menu, Bell, Search, Moon, Sun } from 'lucide-react';
+import { clearSession, getRoleMenu, getStoredSession, getStoredSettings, SETTINGS_KEY } from '../lib/auth.js';
 
-const menu = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/products', label: 'Products', icon: Boxes },
-  { to: '/salespersons', label: 'Salespersons', icon: Users },
-  { to: '/pos', label: 'Point of Sale', icon: ShoppingCart },
-  { to: '/sales-records', label: 'Sales Records', icon: FileText },
-  { to: '/settings', label: 'Settings', icon: Settings },
-];
+const iconMap = {
+  dashboard: LayoutDashboard,
+  boxes: Boxes,
+  users: Users,
+  cart: ShoppingCart,
+  receipt: FileText,
+  settings: Settings,
+};
 
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const pageTitle = menu.find((item) => item.to === location.pathname)?.label || 'Dashboard';
+  const session = getStoredSession();
+  const role = session?.role || 'salesperson';
+  const basePath = role === 'admin' ? '/admin' : '/sales';
+  const menu = getRoleMenu(role).map((item) => ({ ...item, to: `${basePath}/${item.to}`, icon: iconMap[item.icon] }));
+  const pageTitle = menu.find((item) => location.pathname === item.to)?.label || 'Point of Sale';
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -23,7 +28,7 @@ export default function MainLayout() {
     const loadNotifications = () => {
       if (typeof window === 'undefined') return;
       try {
-        const settings = JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
+        const settings = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '{}');
         if (settings.notificationsEnabled === false) {
           setNotifications([]);
           return;
@@ -37,15 +42,10 @@ export default function MainLayout() {
 
     const syncTheme = () => {
       if (typeof window === 'undefined') return;
-      try {
-        const settings = JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
-        const isDark = settings.darkMode === true;
-        document.documentElement.classList.toggle('theme-dark', isDark);
-        setDarkMode(isDark);
-      } catch {
-        document.documentElement.classList.remove('theme-dark');
-        setDarkMode(false);
-      }
+      const settings = getStoredSettings();
+      const isDark = settings.darkMode === true;
+      document.documentElement.classList.toggle('theme-dark', isDark);
+      setDarkMode(isDark);
     };
 
     loadNotifications();
@@ -61,8 +61,17 @@ export default function MainLayout() {
   }, []);
 
   const handleLogout = () => {
-    window.localStorage.removeItem('lumensoft-auth');
+    clearSession();
     navigate('/login');
+  };
+
+  const toggleTheme = () => {
+    const nextValue = !darkMode;
+    setDarkMode(nextValue);
+    document.documentElement.classList.toggle('theme-dark', nextValue);
+    const settings = { ...getStoredSettings(), darkMode: nextValue };
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    window.dispatchEvent(new Event('lumensoft:settings'));
   };
 
   return (
@@ -72,7 +81,7 @@ export default function MainLayout() {
           <div className="brand-mark">LS</div>
           <div>
             <h4 className="mb-0">Lumensoft</h4>
-            <small>POS Admin</small>
+            <small>{role === 'admin' ? 'Admin Panel' : 'Sales Panel'}</small>
           </div>
         </div>
 
@@ -101,58 +110,47 @@ export default function MainLayout() {
             <button className="btn btn-light border-0 d-lg-none" type="button">
               <Menu size={18} />
             </button>
-            <h4 className="mb-0">{pageTitle}</h4>
+            <div>
+              <h4 className="mb-0">{pageTitle}</h4>
+              <small className="text-muted text-uppercase">{role}</small>
+            </div>
           </div>
           <div className="d-flex align-items-center gap-2">
             <div className="topbar-search">
               <Search size={16} />
               <input type="text" placeholder="Search" />
             </div>
-            <button className="btn btn-light border-0" onClick={() => {
-              const nextValue = !darkMode;
-              setDarkMode(nextValue);
-              document.documentElement.classList.toggle('theme-dark', nextValue);
-              const settings = JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
-              const updatedSettings = { ...settings, darkMode: nextValue };
-              window.localStorage.setItem('lumensoft-settings', JSON.stringify(updatedSettings));
-              window.dispatchEvent(new Event('lumensoft:settings'));
-            }}>
+            <button className="btn btn-light border-0" onClick={toggleTheme}>
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="position-relative">
-              <button className="btn btn-light border-0 position-relative" onClick={() => setShowNotifications((value) => !value)}>
-                <Bell size={18} />
-                <span className="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">{notifications.length}</span>
-              </button>
-              {showNotifications && (
-                <div className="position-absolute end-0 mt-2 bg-white border rounded shadow-sm p-2" style={{ width: 260, zIndex: 10 }}>
-                  <div className="fw-semibold mb-2">Notifications</div>
-                  {notifications.length === 0 ? (
-                    <div className="text-muted small">No notifications yet.</div>
-                  ) : (
-                    notifications.map((notification) => (
-                      <div key={notification.id} className="small border-bottom py-2">
-                        <div>{notification.message}</div>
-                        <div className="text-muted">{new Date(notification.createdAt).toLocaleString()}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="user-pill">
-              <div className="avatar">A</div>
-              <div>
-                <div className="fw-semibold">Admin</div>
-                <small className="text-muted">Super Admin</small>
-              </div>
-            </div>
+            <button className="btn btn-light border-0 position-relative" onClick={() => setShowNotifications((current) => !current)}>
+              <Bell size={18} />
+              {notifications.length > 0 ? <span className="badge rounded-pill bg-danger notification-badge">{notifications.length}</span> : null}
+            </button>
           </div>
         </header>
 
-        <section className="page-content">
+        {showNotifications ? (
+          <div className="notification-panel shadow-sm">
+            <h6 className="mb-3">Notifications</h6>
+            {notifications.length === 0 ? (
+              <p className="text-muted mb-0">No notifications available.</p>
+            ) : (
+              <div className="list-group list-group-flush">
+                {notifications.map((notification) => (
+                  <div key={notification.id} className="list-group-item px-0">
+                    <div className="fw-semibold">{notification.message}</div>
+                    <small className="text-muted">{new Date(notification.createdAt).toLocaleString()}</small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <div className="page-content">
           <Outlet />
-        </section>
+        </div>
       </main>
     </div>
   );

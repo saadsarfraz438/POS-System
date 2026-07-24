@@ -2,34 +2,24 @@ import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import SectionCard from '../components/SectionCard.jsx';
 import SettingSwitch from '../components/SettingSwitch.jsx';
-
-const defaultSettings = {
-  companyName: 'Lumensoft POS',
-  currency: 'PKR',
-  taxRate: 0,
-  notificationsEnabled: true,
-  showRecentSalesChart: true,
-  printEnabled: true,
-  discountEnabled: true,
-  darkMode: false,
-};
+import { DEFAULT_SETTINGS, SETTINGS_KEY } from '../lib/auth.js';
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState(defaultSettings);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem('lumensoft-settings');
+    const stored = window.localStorage.getItem(SETTINGS_KEY);
     if (stored) {
       try {
-        setSettings({ ...defaultSettings, ...JSON.parse(stored) });
+        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
       } catch {
-        setSettings(defaultSettings);
+        setSettings(DEFAULT_SETTINGS);
       }
     }
   }, []);
 
   const handleSave = () => {
-    window.localStorage.setItem('lumensoft-settings', JSON.stringify(settings));
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     window.dispatchEvent(new Event('lumensoft:settings'));
     Swal.fire('Saved', 'Settings updated successfully.', 'success');
   };
@@ -59,6 +49,13 @@ export default function SettingsPage() {
           <SettingSwitch label="Enable receipt printing" checked={settings.printEnabled} onChange={(e) => setSettings({ ...settings, printEnabled: e.target.checked })} />
           <SettingSwitch label="Enable item discounts" description="Turn this on to allow discounts in the POS screen." checked={settings.discountEnabled} onChange={(e) => setSettings({ ...settings, discountEnabled: e.target.checked })} />
           <SettingSwitch label="Enable dark mode" description="Switch the app between light and dark themes." checked={settings.darkMode} onChange={(e) => setSettings({ ...settings, darkMode: e.target.checked })} />
+          <div className="mb-3">
+            <label className="form-label">Default discount type</label>
+            <select className="form-select" value={settings.discountMode || 'percentage'} onChange={(e) => setSettings({ ...settings, discountMode: e.target.value })}>
+              <option value="percentage">Percentage</option>
+              <option value="cash">Cash / Fixed amount</option>
+            </select>
+          </div>
         </SectionCard>
       </div>
     </div>
