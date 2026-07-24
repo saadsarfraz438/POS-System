@@ -161,17 +161,29 @@ export default function PosPage() {
     const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || 'N/A';
     const receiptDateTime = new Date().toLocaleString();
     const receipt = [
-      'Lumensoft POS Receipt',
+      'Lumensoft POS ',
+      'Customer Receipt',
+      '  ',
       `Invoice: ${invoiceNo}`,
       `Salesperson: ${salespersonName}`,
       `Date: ${receiptDateTime}`,
-      '---',
+      ' ',
+      '------------------------------',
+      ' ',
+      'Description(B)  Qty  price(Rs)',
+      ' ',
       ...selectedItems.map((item) => `${item.name} x${item.qty} = Rs ${Number(item.retailPrice * item.qty - (item.discount || 0)).toLocaleString()}`),
-      '---',
+      '   ',
+      '------------------------------',
       `Subtotal: Rs ${subtotal.toLocaleString()}`,
       `Tax (${taxRate}%): Rs ${taxAmount.toLocaleString()}`,
       `Discount: Rs ${discount.toLocaleString()}`,
       `Grand Total: Rs ${grandTotal.toLocaleString()}`,
+      ' ',
+      '********   *********  *********',
+      ' ',
+      '** THANK YOU ** ',
+      '** LUMENSOFT pos **',
     ].join('\n');
 
     const blob = new Blob([receipt], { type: 'text/plain;charset=utf-8' });
