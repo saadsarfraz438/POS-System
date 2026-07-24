@@ -12,8 +12,7 @@ import SalesRecordsPage from './pages/SalesRecordsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import auth from './lib/auth.js';
-const { getDefaultPathForRole, getStoredSession } = auth;
+import { getDefaultPathForRole, getStoredSession } from './lib/auth.ts';
 
 function ProtectedRoute({ children, roles }: { children: ReactNode; roles: Array<'admin' | 'salesperson'> }) {
   const session = getStoredSession();
