@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
+import SectionCard from '../components/SectionCard.jsx';
 import { getProducts, getSalespersons, createSale } from '../services/api.js';
 
-const today = new Date().toISOString().slice(0, 10);
+const getTodayDateValue = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, '0');
+  const day = `${now.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const today = getTodayDateValue();
 
 const getSettings = () => {
-  if (typeof window === 'undefined') return { taxRate: 0, printEnabled: true };
+  if (typeof window === 'undefined') return { taxRate: 0, printEnabled: true, discountEnabled: true, darkMode: false };
   try {
-    return JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
+    return { taxRate: 0, printEnabled: true, discountEnabled: true, darkMode: false, ...JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}') };
   } catch {
-    return { taxRate: 0, printEnabled: true };
+    return { taxRate: 0, printEnabled: true, discountEnabled: true, darkMode: false };
   }
 };
 
@@ -68,12 +77,26 @@ export default function PosPage() {
   };
 
   const updateItem = (id, field, value) => {
-    const numericValue = Number(value);
-    if (field === 'qty' && numericValue <= 0) {
-      removeItem(id);
-      return;
+    if (field === 'qty') {
+      const numericValue = Number(value);
+      if (numericValue <= 0) {
+        removeItem(id);
+        return;
+      }
     }
-    setSelectedItems((current) => current.map((item) => item.id === id ? { ...item, [field]: numericValue } : item));
+
+    setSelectedItems((current) => current.flatMap((item) => {
+      if (item.id !== id) return [item];
+      if (field === 'qty') {
+        return [{ ...item, qty: Number(value) }];
+      }
+      if (field === 'discount') {
+        const maxAllowed = item.retailPrice * item.qty;
+        const numericValue = Math.max(0, Math.min(Number(value || 0), maxAllowed));
+        return [{ ...item, discount: numericValue }];
+      }
+      return [{ ...item, [field]: Number(value) }];
+    }));
   };
 
   const removeItem = (id) => {
@@ -85,6 +108,7 @@ export default function PosPage() {
   const taxRate = Number(settings.taxRate || 0);
   const taxAmount = subtotal * (taxRate / 100);
   const grandTotal = subtotal + taxAmount - discount;
+  const discountEnabled = settings.discountEnabled !== false;
 
   const saveSale = async () => {
     if (!selectedSalesperson || selectedItems.length === 0) {
@@ -98,10 +122,21 @@ export default function PosPage() {
       return;
     }
 
+    const invalidDiscounts = selectedItems.some((item) => Number(item.discount || 0) < 0 || Number(item.discount || 0) > item.retailPrice * item.qty);
+    if (invalidDiscounts) {
+      Swal.fire('Validation', 'Discounts must be zero or more and cannot exceed the line total.', 'warning');
+      return;
+    }
+
+    const effectiveSaleDate = getTodayDateValue();
+    if (saleDate !== effectiveSaleDate) {
+      setSaleDate(effectiveSaleDate);
+    }
+
     const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || '';
     const payload = {
       invoiceNo: invoiceNo.trim(),
-      saleDate,
+      saleDate: effectiveSaleDate,
       salespersonId: Number(selectedSalesperson),
       salespersonName,
       grandTotal,
@@ -124,13 +159,14 @@ export default function PosPage() {
 
   const handlePrintReceipt = () => {
     const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || 'N/A';
+    const receiptDateTime = new Date().toLocaleString();
     const receipt = [
       'Lumensoft POS Receipt',
       `Invoice: ${invoiceNo}`,
       `Salesperson: ${salespersonName}`,
-      `Date: ${saleDate}`,
+      `Date: ${receiptDateTime}`,
       '---',
-      ...selectedItems.map((item) => `${item.name} x${item.qty} = Rs ${Number(item.retailPrice * item.qty).toLocaleString()}`),
+      ...selectedItems.map((item) => `${item.name} x${item.qty} = Rs ${Number(item.retailPrice * item.qty - (item.discount || 0)).toLocaleString()}`),
       '---',
       `Subtotal: Rs ${subtotal.toLocaleString()}`,
       `Tax (${taxRate}%): Rs ${taxAmount.toLocaleString()}`,
@@ -159,104 +195,102 @@ export default function PosPage() {
 
   return (
     <div>
-      <div className="card shadow-sm border-0 mb-4">
-        <div className="card-body">
-          <div className="row g-3 align-items-end">
-            <div className="col-12 col-md-3">
-              <label className="form-label">Salesperson</label>
-              <select className="form-select" value={selectedSalesperson} onChange={(e) => setSelectedSalesperson(e.target.value)}>
-                <option value="">Choose salesperson</option>
-                {salespersons.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-              </select>
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label">Sale Date</label>
-              <input className="form-control" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label">Invoice No</label>
-              <input className="form-control" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label">Search Product</label>
-              <div className="input-group">
-                <span className="input-group-text"><Search size={16} /></span>
-                <input className="form-control" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Start typing..." />
-              </div>
+      <SectionCard className="mb-4">
+        <div className="row g-3 align-items-end">
+          <div className="col-12 col-md-3">
+            <label className="form-label">Salesperson</label>
+            <select className="form-select" value={selectedSalesperson} onChange={(e) => setSelectedSalesperson(e.target.value)}>
+              <option value="">Choose salesperson</option>
+              {salespersons.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+            </select>
+          </div>
+          <div className="col-12 col-md-3">
+            <label className="form-label">Sale Date</label>
+            <input className="form-control" type="date" value={saleDate} min={today} max={today} onChange={(e) => setSaleDate(e.target.value)} />
+          </div>
+          <div className="col-12 col-md-3">
+            <label className="form-label">Invoice No</label>
+            <input className="form-control" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
+          </div>
+          <div className="col-12 col-md-3">
+            <label className="form-label">Search Product</label>
+            <div className="input-group">
+              <span className="input-group-text"><Search size={16} /></span>
+              <input className="form-control" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Start typing..." />
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <div className="row g-4">
         <div className="col-12 col-xl-8">
-          <div className="card shadow-sm border-0">
-            <div className="card-body">
-              <h5 className="mb-3">Product Search</h5>
-              <div className="row g-3">
-                {filteredProducts.map((product) => (
-                  <div className="col-12 col-md-6 col-lg-4" key={product.id}>
-                    <div className="border rounded-4 p-3 h-100 hover-card">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div className="fw-semibold">{product.name}</div>
-                          <small className="text-muted">{product.code}</small>
-                        </div>
-                        <span className="badge bg-primary">Rs {Number(product.retailPrice || 0).toLocaleString()}</span>
+          <SectionCard title="Product Search">
+            <div className="row g-3">
+              {filteredProducts.map((product) => (
+                <div className="col-12 col-md-6 col-lg-4" key={product.id}>
+                  <div className="border rounded-4 p-3 h-100 hover-card">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <div className="fw-semibold">{product.name}</div>
+                        <small className="text-muted">{product.code}</small>
                       </div>
-                      <div className="mt-3 d-flex justify-content-between align-items-center">
-                        <small className="text-muted">Stock available</small>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => addItem(product)}><Plus size={14} /> Add</button>
-                      </div>
+                      <span className="badge bg-primary">Rs {Number(product.retailPrice || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="mt-3 d-flex justify-content-between align-items-center">
+                      <small className="text-muted">Stock available</small>
+                      <button className="btn btn-outline-primary btn-sm" onClick={() => addItem(product)}><Plus size={14} /> Add</button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          </div>
+          </SectionCard>
         </div>
 
         <div className="col-12 col-xl-4">
-          <div className="card shadow-sm border-0">
-            <div className="card-body">
-              <h5 className="mb-3">Sale Items</h5>
-              <div className="table-responsive">
-                <table className="table table-hover align-middle">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Qty</th>
-                      <th>Retail</th>
-                      <th>Total</th>
-                      <th></th>
+          <SectionCard title="Sale Items">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Retail</th>
+                    {discountEnabled ? <th>Discount</th> : null}
+                    <th>Total</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.name}</td>
+                      <td><input type="number" min="1" className="form-control form-control-sm" value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} /></td>
+                      <td>{item.retailPrice}</td>
+                      {discountEnabled ? (
+                        <td>
+                          <input type="number" min="0" className="form-control form-control-sm" value={item.discount || 0} onChange={(e) => updateItem(item.id, 'discount', e.target.value)} />
+                        </td>
+                      ) : null}
+                      <td>{(item.retailPrice * item.qty - (item.discount || 0)).toLocaleString()}</td>
+                      <td><button className="btn btn-outline-danger btn-sm" onClick={() => removeItem(item.id)}><Trash2 size={14} /></button></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {selectedItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.name}</td>
-                        <td><input type="number" min="1" className="form-control form-control-sm" value={item.qty} onChange={(e) => updateItem(item.id, 'qty', e.target.value)} /></td>
-                        <td>{item.retailPrice}</td>
-                        <td>{(item.retailPrice * item.qty).toLocaleString()}</td>
-                        <td><button className="btn btn-outline-danger btn-sm" onClick={() => removeItem(item.id)}><Trash2 size={14} /></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="border-top pt-3 mt-3">
-                <div className="d-flex justify-content-between"><span>Sub Total</span><b>Rs {subtotal.toLocaleString()}</b></div>
-                <div className="d-flex justify-content-between"><span>Tax</span><b>Rs {taxAmount.toLocaleString()}</b></div>
-                <div className="d-flex justify-content-between"><span>Discount</span><b>Rs {discount.toLocaleString()}</b></div>
-                <div className="d-flex justify-content-between mt-2 fs-5"><span>Grand Total</span><b>Rs {grandTotal.toLocaleString()}</b></div>
-              </div>
-              <div className="d-flex gap-2 mt-4">
-                <button className="btn btn-primary" onClick={saveSale}>Save Sale</button>
-                <button className="btn btn-outline-secondary" onClick={() => setSelectedItems([])}>Clear</button>
-                <button className="btn btn-outline-info" onClick={handlePrintReceipt} disabled={selectedItems.length === 0}>Print</button>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+            <div className="border-top pt-3 mt-3">
+              <div className="d-flex justify-content-between"><span>Sub Total</span><b>Rs {subtotal.toLocaleString()}</b></div>
+              <div className="d-flex justify-content-between"><span>Tax</span><b>Rs {taxAmount.toLocaleString()}</b></div>
+              <div className="d-flex justify-content-between"><span>Discount</span><b>Rs {discount.toLocaleString()}</b></div>
+              <div className="d-flex justify-content-between mt-2 fs-5"><span>Grand Total</span><b>Rs {grandTotal.toLocaleString()}</b></div>
+            </div>
+            <div className="d-flex gap-2 mt-4">
+              <button className="btn btn-primary" onClick={saveSale}>Save Sale</button>
+              <button className="btn btn-outline-secondary" onClick={() => setSelectedItems([])}>Clear</button>
+              <button className="btn btn-outline-info" onClick={handlePrintReceipt} disabled={selectedItems.length === 0}>Print</button>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Boxes, Users, ShoppingCart, FileText, Settings, LogOut, Menu, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, Boxes, Users, ShoppingCart, FileText, Settings, LogOut, Menu, Bell, Search, Moon, Sun } from 'lucide-react';
 
 const menu = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,6 +17,7 @@ export default function MainLayout() {
   const pageTitle = menu.find((item) => item.to === location.pathname)?.label || 'Dashboard';
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const loadNotifications = () => {
@@ -34,11 +35,27 @@ export default function MainLayout() {
       }
     };
 
+    const syncTheme = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const settings = JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
+        const isDark = settings.darkMode === true;
+        document.documentElement.classList.toggle('theme-dark', isDark);
+        setDarkMode(isDark);
+      } catch {
+        document.documentElement.classList.remove('theme-dark');
+        setDarkMode(false);
+      }
+    };
+
     loadNotifications();
+    syncTheme();
     window.addEventListener('lumensoft:notifications', loadNotifications);
+    window.addEventListener('lumensoft:settings', syncTheme);
     window.addEventListener('storage', loadNotifications);
     return () => {
       window.removeEventListener('lumensoft:notifications', loadNotifications);
+      window.removeEventListener('lumensoft:settings', syncTheme);
       window.removeEventListener('storage', loadNotifications);
     };
   }, []);
@@ -91,6 +108,17 @@ export default function MainLayout() {
               <Search size={16} />
               <input type="text" placeholder="Search" />
             </div>
+            <button className="btn btn-light border-0" onClick={() => {
+              const nextValue = !darkMode;
+              setDarkMode(nextValue);
+              document.documentElement.classList.toggle('theme-dark', nextValue);
+              const settings = JSON.parse(window.localStorage.getItem('lumensoft-settings') || '{}');
+              const updatedSettings = { ...settings, darkMode: nextValue };
+              window.localStorage.setItem('lumensoft-settings', JSON.stringify(updatedSettings));
+              window.dispatchEvent(new Event('lumensoft:settings'));
+            }}>
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <div className="position-relative">
               <button className="btn btn-light border-0 position-relative" onClick={() => setShowNotifications((value) => !value)}>
                 <Bell size={18} />

@@ -207,6 +207,11 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
         return Results.BadRequest(new { message = "Each product quantity must be greater than zero." });
     }
 
+    if (sale.Items.Any(item => item.Discount < 0 || item.Discount > (item.Price * item.Quantity)))
+    {
+        return Results.BadRequest(new { message = "Discount must be zero or more and cannot exceed the line total." });
+    }
+
     var duplicateInvoice = await db.Sales.AnyAsync(s => s.InvoiceNo.ToLower() == sale.InvoiceNo.Trim().ToLower());
     if (duplicateInvoice)
     {
@@ -214,7 +219,7 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
     }
 
     sale.InvoiceNo = sale.InvoiceNo.Trim();
-    sale.SaleDate = sale.SaleDate == default ? DateTime.Now : sale.SaleDate;
+    sale.SaleDate = DateTime.Now;
     sale.GrandTotal = sale.Items.Sum(item => item.Total);
     db.Sales.Add(sale);
     await db.SaveChangesAsync();

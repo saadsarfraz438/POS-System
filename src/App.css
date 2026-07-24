@@ -1,13 +1,42 @@
+:root {
+  --bg-color: #f5f7fb;
+  --surface-color: #ffffff;
+  --surface-muted: #f8fafc;
+  --text-color: #0f172a;
+  --muted-color: #64748b;
+  --border-color: #e2e8f0;
+  --sidebar-bg: #1e293b;
+  --sidebar-text: #cbd5e1;
+  --shadow-color: rgba(15, 23, 42, 0.08);
+}
+
+.theme-dark {
+  --bg-color: #020617;
+  --surface-color: #111827;
+  --surface-muted: #1f2937;
+  --text-color: #f8fafc;
+  --muted-color: #94a3b8;
+  --border-color: #334155;
+  --sidebar-bg: #020617;
+  --sidebar-text: #cbd5e1;
+  --shadow-color: rgba(2, 6, 23, 0.35);
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
 .app-shell {
   display: flex;
   min-height: 100vh;
-  background: #f5f7fb;
+  background: var(--bg-color);
 }
 
 .sidebar {
   width: 260px;
-  background: #1e293b;
-  color: #fff;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
   padding: 1.25rem 1rem;
   display: flex;
   flex-direction: column;
@@ -66,9 +95,9 @@
 }
 
 .topbar {
-  background: #fff;
+  background: var(--surface-color);
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -78,8 +107,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 999px;
   padding: 0.45rem 0.75rem;
 }
@@ -96,7 +125,7 @@
   gap: 0.6rem;
   padding: 0.3rem 0.6rem;
   border-radius: 999px;
-  background: #f8fafc;
+  background: var(--surface-muted);
 }
 
 .avatar {
@@ -116,6 +145,18 @@
 
 .card {
   border-radius: 1rem;
+  background: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+.card .form-control,
+.card .form-select,
+.card .form-check-input,
+.card .table {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--border-color);
 }
 
 .icon-box {
@@ -131,7 +172,7 @@
 
 .hover-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 @media (max-width: 991px) {

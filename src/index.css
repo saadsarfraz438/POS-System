@@ -10,6 +10,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -19,6 +23,11 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: #f5f7fb;
+}
+
+.theme-dark body {
+  background: #020617;
+  color: #f8fafc;
 }
 
 #root {
