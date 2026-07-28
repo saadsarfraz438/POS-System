@@ -96,7 +96,7 @@ export default function MainLayout() {
           <div className="brand-mark">POS</div>
           <div>
             <h4 className="mb-0">Lumensoft</h4>
-            <small>{role === 'admin' ? ' ADMIN PANEL' : 'SALES PANEL'}</small>
+            <small>{role === 'admin' ? ' ADMIN' : 'SALESPERSON '}</small>
           </div>
         </div>
         
