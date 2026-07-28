@@ -1,7 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactNode } from 'react';
+// @ts-expect-error CSS import is resolved by the bundler.
 import 'bootstrap/dist/css/bootstrap.min.css';
+// @ts-expect-error CSS import is resolved by the bundler.
 import 'bootstrap-icons/font/bootstrap-icons.css';
+// @ts-expect-error CSS import is resolved by the bundler.
 import './App.css';
 import MainLayout from './layouts/MainLayout.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';

@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// @ts-expect-error CSS import is resolved by the bundler.
 import './index.css'
 import App from './App.tsx'
 
