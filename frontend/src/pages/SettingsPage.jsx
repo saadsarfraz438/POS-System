@@ -44,11 +44,11 @@ export default function SettingsPage() {
       </div>
       <div className="col-12 col-xl-6">
         <SectionCard title="System Preferences">
-          <SettingSwitch label="Enable notifications" checked={settings.notificationsEnabled} onChange={(e) => setSettings({ ...settings, notificationsEnabled: e.target.checked })} />
-          <SettingSwitch label="Show recent sales chart" checked={settings.showRecentSalesChart} onChange={(e) => setSettings({ ...settings, showRecentSalesChart: e.target.checked })} />
-          <SettingSwitch label="Enable receipt printing" checked={settings.printEnabled} onChange={(e) => setSettings({ ...settings, printEnabled: e.target.checked })} />
-          <SettingSwitch label="Enable item discounts" description="Turn this on to allow discounts in the POS screen." checked={settings.discountEnabled} onChange={(e) => setSettings({ ...settings, discountEnabled: e.target.checked })} />
-          <SettingSwitch label="Enable dark mode" description="Switch the app between light and dark themes." checked={settings.darkMode} onChange={(e) => setSettings({ ...settings, darkMode: e.target.checked })} />
+          <SettingSwitch label="Notifications"description="Allow to see the Notifications" checked={settings.notificationsEnabled} onChange={(e) => setSettings({ ...settings, notificationsEnabled: e.target.checked })} />
+          <SettingSwitch label=" Recent Sales "description="Turn on to see Recent Sales Chart" checked={settings.showRecentSalesChart} onChange={(e) => setSettings({ ...settings, showRecentSalesChart: e.target.checked })} />
+          <SettingSwitch label="Receipt Printing"description="Turn it on for Recipet Printing" checked={settings.printEnabled} onChange={(e) => setSettings({ ...settings, printEnabled: e.target.checked })} />
+          <SettingSwitch label=" Item Discounts" description="Turn this on to allow discounts in the POS Screen." checked={settings.discountEnabled} onChange={(e) => setSettings({ ...settings, discountEnabled: e.target.checked })} />
+          <SettingSwitch label="Dark Mode" description="Switch the app between light and Dark themes." checked={settings.darkMode} onChange={(e) => setSettings({ ...settings, darkMode: e.target.checked })} />
           <div className="mb-3">
             <label className="form-label">Default discount type</label>
             <select className="form-select" value={settings.discountMode || 'percentage'} onChange={(e) => setSettings({ ...settings, discountMode: e.target.value })}>

@@ -132,7 +132,6 @@ export default function MainLayout() {
             </button>
             <div>
               <h4 className="mb-0">{pageTitle}</h4>
-              <small className="text-muted text-uppercase">{role}</small>
             </div>
           </div>
           

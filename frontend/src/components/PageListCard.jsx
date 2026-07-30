@@ -1,4 +1,4 @@
-export default function PageListCard({
+export default function PageListCard({  // export the component as default means you can import it without using curly braces and you can give it any name you want when importing it
   title,
   description,
   searchValue,

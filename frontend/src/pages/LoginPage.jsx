@@ -40,10 +40,11 @@ export default function LoginPage() {
     <div className="auth-page min-vh-100 d-flex align-items-center justify-content-center">
       <div className="card shadow border-0 auth-card">
         <div className="card-body p-4 p-md-5">
-          <div className="mb-4">
-            <span className="badge rounded-pill text-bg-primary mb-3">Lumensoft POS</span>
-            <h3 className="mb-1">Choose your panel</h3>
-            <p className="text-muted mb-0">Admin gets full access. Salesperson gets POS, products, and settings only.</p>
+          <div className="mb-4 text-center">
+            <span className="badge rounded-pill text-bg-primary mb-3 fs-5 px-4 py-2">Lumensoft POS</span>
+                     </div>
+<div className="mb-4">
+ <h5 className="mb-1">Choose your panel</h5>
           </div>
 
           <div className="btn-group w-100 mb-4 auth-role-toggle" role="tablist" aria-label="Select login role">
@@ -61,11 +62,11 @@ export default function LoginPage() {
               <input type="password" className="form-control" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             </div>
             {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-            <div className="small text-muted mb-3">
-              Admin: {AUTH_PROFILES.admin.email} / {AUTH_PROFILES.admin.password}<br />
-              Salesperson: {AUTH_PROFILES.salesperson.email} / {AUTH_PROFILES.salesperson.password}
+            <div className="small text-muted mb-3 text-center">
+              <a href="#">Forget Password?</a> <br />
+              Don't have an account? <a href="#">Contact Admin</a>
             </div>
-            <button className="btn btn-primary w-100" type="submit">Sign In</button>
+            <button className="btn btn-primary w-100" type="submit">Login</button>
           </form>
         </div>
       </div>
