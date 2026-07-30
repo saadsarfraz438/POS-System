@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Boxes, Users, ShoppingCart, FileText, Settings, LogOut, Menu, Bell, Search, Moon, Sun } from 'lucide-react';
 import { clearSession, getRoleMenu, getStoredSession, getStoredSettings, SETTINGS_KEY } from '../lib/auth.js';
+import Footer from '../components/Footer.jsx';
 
 const iconMap = {
   dashboard: LayoutDashboard,
@@ -178,6 +179,8 @@ export default function MainLayout() {
         <div className="page-content">
           <Outlet />
         </div>
+
+        <Footer />
       </main>
     </div>
   );

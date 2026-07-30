@@ -33,6 +33,8 @@ export default function PosPage() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [settings, setSettings] = useState(getStoredSettings);
 
+  const isActiveStatus = (status) => String(status || '').trim().toLowerCase() === 'active';
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -54,10 +56,28 @@ export default function PosPage() {
     };
   }, []);
 
+  const activeProducts = useMemo(() => products.filter((product) => isActiveStatus(product.status)), [products]);
+
+  const activeSalespersons = useMemo(() => salespersons.filter((person) => isActiveStatus(person.status)), [salespersons]);
+
   const filteredProducts = useMemo(() => {
-    if (!searchTerm) return products.slice(0, 8);
-    return products.filter((product) => `${product.code} ${product.name}`.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
-  }, [products, searchTerm]);
+    const visibleProducts = activeProducts;
+    if (!searchTerm) return visibleProducts.slice(0, 8);
+    return visibleProducts.filter((product) => `${product.code} ${product.name}`.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
+  }, [activeProducts, searchTerm]);
+
+  useEffect(() => {
+    if (selectedSalesperson && !activeSalespersons.some((person) => String(person.id) === String(selectedSalesperson))) {
+      setSelectedSalesperson('');
+    }
+  }, [activeSalespersons, selectedSalesperson]);
+
+  useEffect(() => {
+    if (selectedItems.length === 0) return;
+
+    const activeProductIds = new Set(activeProducts.map((product) => String(product.id)));
+    setSelectedItems((current) => current.filter((item) => activeProductIds.has(String(item.id))));
+  }, [activeProducts, selectedItems.length]);
 
   const lineDiscount = (item) => {
     const lineSubtotal = item.retailPrice * item.qty;
@@ -122,6 +142,19 @@ export default function PosPage() {
       return;
     }
 
+    const salesperson = activeSalespersons.find((item) => String(item.id) === String(selectedSalesperson));
+    if (!salesperson) {
+      Swal.fire('Validation', 'Please choose an active salesperson.', 'warning');
+      return;
+    }
+
+    const selectedProductIds = new Set(activeProducts.map((product) => String(product.id)));
+    const inactiveSelection = selectedItems.some((item) => !selectedProductIds.has(String(item.id)));
+    if (inactiveSelection) {
+      Swal.fire('Validation', 'One or more selected products are no longer active.', 'warning');
+      return;
+    }
+
     const invalidQty = selectedItems.some((item) => Number(item.qty) <= 0);
     if (invalidQty) {
       Swal.fire('Validation', 'Each product quantity must be greater than zero.', 'warning');
@@ -145,7 +178,7 @@ export default function PosPage() {
       setSaleDate(effectiveSaleDate);
     }
 
-    const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || '';
+    const salespersonName = salesperson.name || '';
     const payload = {
       invoiceNo: invoiceNo.trim(),
       saleDate: effectiveSaleDate,
@@ -236,7 +269,7 @@ export default function PosPage() {
             <label className="form-label">Salesperson</label>
             <select className="form-select" value={selectedSalesperson} onChange={(e) => setSelectedSalesperson(e.target.value)}>
               <option value="">Choose salesperson</option>
-              {salespersons.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                {activeSalespersons.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
             </select>
           </div>
           <div className="col-12 col-md-3">
@@ -278,6 +311,7 @@ export default function PosPage() {
                   </div>
                 </div>
               ))}
+              {filteredProducts.length === 0 ? <div className="col-12 text-center text-muted py-4">No active products available.</div> : null}
             </div>
           </SectionCard>
         </div>

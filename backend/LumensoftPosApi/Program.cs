@@ -212,6 +212,29 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
         return Results.BadRequest(new { message = "Discount must be zero or more and cannot exceed the line total." });
     }
 
+    var salesperson = await db.Salespersons.FindAsync(sale.SalespersonId);
+    if (salesperson is null)
+    {
+        return Results.BadRequest(new { message = "Selected salesperson was not found." });
+    }
+
+    if (!string.Equals(salesperson.Status?.Trim(), "Active", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.BadRequest(new { message = "Selected salesperson is inactive." });
+    }
+
+    var productIds = sale.Items.Select(item => item.ProductId).Distinct().ToList();
+    var products = await db.Products.Where(product => productIds.Contains(product.Id)).ToListAsync();
+    if (products.Count != productIds.Count)
+    {
+        return Results.BadRequest(new { message = "One or more selected products were not found." });
+    }
+
+    if (products.Any(product => !string.Equals(product.Status?.Trim(), "Active", StringComparison.OrdinalIgnoreCase)))
+    {
+        return Results.BadRequest(new { message = "One or more selected products are inactive." });
+    }
+
     var duplicateInvoice = await db.Sales.AnyAsync(s => s.InvoiceNo.ToLower() == sale.InvoiceNo.Trim().ToLower());
     if (duplicateInvoice)
     {
