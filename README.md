@@ -120,6 +120,36 @@ backend/
         └── project.nuget.cache     
 ```
 ---
+## Functioning:
+Login Page for Admin and Salesperson
+
+![App Screenshot](frontend/assets/1.png)
+
+Admin Dashboard
+![App Screenshot](frontend/assets/2.png)
+
+Product Screen
+![App Screenshot](frontend/assets/3.png)
+
+Salesperson Screen
+![App Screenshot](frontend/assets/4.png)
+
+Point of Sale Screen
+![App Screenshot](frontend/assets/5.png)
+
+SalesRecord Screen
+![App Screenshot](frontend/assets/6.png)
+
+Settings
+![App Screenshot](frontend/assets/7.png)
+
+
+Salesperson Screen for POS 
+![App Screenshot](frontend/assets/9.png)
+
+Receipt printing option
+![App Screenshot](frontend/assets/10.png)
+
 
 ## Purpose
 
