@@ -79,6 +79,7 @@ The frontend API client points to `http://localhost:5298/api`, matching the back
 ```
 ## Project Structure
 Pos-system/
+
 Frontend/
  src/
 ├── assets/                  # Static files (images, icons, logos)
@@ -99,7 +100,24 @@ Frontend/
 ├── App.jsx                  # Root component
 └── main.jsx                 # Entry point
 
-Backend/.....upcoming
+backend/
+└── LumensoftPosApi/
+    ├── LumensoftPosApi.csproj          # Dependencies, and target framework (.NET 9)
+    ├── Program.cs                      # Application entry point
+    ├── Models.cs                       # Data models and Entity Framework entities
+    ├── appsettings.json                # Global configuration settings
+    ├── appsettings.Development.json    # Development configuration overrides
+    ├── Data/
+    │   └── LumensoftDbContext.cs       # Entity Framework Core database context mapper
+    ├── Properties/
+    │   └── launchSettings.json         # Server profiles, ports (HTTP/HTTPS), and IIS configuration
+    ├── bin/                            # Compiled machine code
+    └── obj/                            # Intermediate build artifacts and NuGet package restoration caches
+        ├── LumensoftPosApi.csproj.nuget.dgspec.json
+        ├── LumensoftPosApi.csproj.nuget.g.props
+        ├── LumensoftPosApi.csproj.nuget.g.targets
+        ├── project.assets.json
+        └── project.nuget.cache     
 ```
 ---
 
@@ -109,14 +127,14 @@ The purpose of this project is to demonstrate full-stack development skills by i
 
 ---
 
-Developed as part of the Lumensoft Technologies Internship Evaluation.
+Developed as part of the Lumensoft Technologies Evaluation.
 
 ---
 # React + TypeScript + Vite
 
 ## React Compiler
 
-The React Compiler is not enabled on this because of its impact on dev & build performances.
+The React Compiler is not enabled on this due to its impact on dev & build performance.
 
 ## Expanding the Oxlint configuration
 
@@ -134,6 +152,11 @@ The React Compiler is not enabled on this because of its impact on dev & build p
 }
 ```
 ---
+## Deployement:
+```
+Frontend on Vercel
+Backend and Database on Railway
+```
 
 ## Contributing
 Contributions, suggestions, and feature requests are welcome. Feel free to fork the repository, create a new branch, and submit a pull request.
