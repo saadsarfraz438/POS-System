@@ -24,8 +24,8 @@ public class Product
     [Required]
     public decimal CostPrice { get; set; }
 
-    [Required]
-    [JsonPropertyName("price")]
+        [Required]
+        [JsonPropertyName("retailPrice")]
     public decimal RetailPrice { get; set; }
 
     public string? Comment { get; set; }
@@ -60,6 +60,7 @@ public class Salesperson
 
     public string Status { get; set; } = "Active";
 
+    [JsonIgnore]
     public List<Sale> Sales { get; set; } = new();
 }
 
@@ -81,7 +82,9 @@ public class SaleDetail
 
     public decimal Total { get; set; }
 
+    [JsonIgnore]
     public Sale? Sale { get; set; }
+    [JsonIgnore]
     public Product? Product { get; set; }
 }
 
@@ -103,6 +106,7 @@ public class Sale
     [JsonPropertyName("grandTotal")]
     public decimal GrandTotal => Total;
 
+    [JsonIgnore]
     public Salesperson? Salesperson { get; set; }
     public List<SaleDetail> Items { get; set; } = new();
 }

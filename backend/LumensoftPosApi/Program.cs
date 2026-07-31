@@ -31,6 +31,7 @@ app.UseHttpsRedirection();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LumensoftDbContext>();
+    db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
 
     if (!db.Products.Any())
@@ -107,7 +108,7 @@ app.MapPut("/api/products/{id}", async (string id, Product updated, LumensoftDbC
         return Results.BadRequest(new { message = "Retail price must be greater than cost price." });
     }
 
-    var duplicate = await db.Products.AnyAsync(p => p.Id != id && p.Code.ToLower() == updated.Code.Trim().ToLower());
+    var duplicate = await db.Products.AnyAsync(p => p.Code != id && p.Code.ToLower() == updated.Code.Trim().ToLower());
     if (duplicate)
     {
         return Results.Conflict(new { message = "Product code already exists." });
@@ -196,7 +197,29 @@ app.MapDelete("/api/salespersons/{id}", async (int id, LumensoftDbContext db) =>
     return Results.NoContent();
 });
 
-app.MapGet("/api/sales", async (LumensoftDbContext db) => await db.Sales.Include(s => s.Items).OrderByDescending(s => s.SaleDate).ToListAsync());
+app.MapGet("/api/sales", async (LumensoftDbContext db) => await db.Sales
+    .AsNoTracking()
+    .OrderByDescending(s => s.SaleDate)
+    .Select(s => new
+    {
+        id = s.Id,
+        invoiceNo = s.InvoiceNo,
+        saleDate = s.SaleDate,
+        salespersonId = s.SalespersonId,
+        salespersonName = s.SalespersonName,
+        grandTotal = s.Total,
+        items = s.Items.Select(item => new
+        {
+            id = item.Id,
+            saleId = item.SaleId,
+            productId = item.ProductId,
+            retailPrice = item.RetailPrice,
+            quantity = item.Quantity,
+            discount = item.Discount,
+            total = item.Total
+        }).ToList()
+    })
+    .ToListAsync());
 app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(sale.InvoiceNo))
@@ -258,7 +281,25 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
     sale.Total = sale.Items.Sum(item => item.Total);
     db.Sales.Add(sale);
     await db.SaveChangesAsync();
-    return Results.Created($"/api/sales/{sale.Id}", sale);
+    return Results.Created($"/api/sales/{sale.Id}", new
+    {
+        id = sale.Id,
+        invoiceNo = sale.InvoiceNo,
+        saleDate = sale.SaleDate,
+        salespersonId = sale.SalespersonId,
+        salespersonName = sale.SalespersonName,
+        grandTotal = sale.Total,
+        items = sale.Items.Select(item => new
+        {
+            id = item.Id,
+            saleId = item.SaleId,
+            productId = item.ProductId,
+            retailPrice = item.RetailPrice,
+            quantity = item.Quantity,
+            discount = item.Discount,
+            total = item.Total
+        })
+    });
 });
 app.MapDelete("/api/sales/{id}", async (int id, LumensoftDbContext db) =>
 {

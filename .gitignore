@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backend build outputs
+backend/LumensoftPosApi/bin/
+backend/LumensoftPosApi/obj/
+backend/LumensoftPosApi/*.db
+backend/LumensoftPosApi/*.db-shm
+backend/LumensoftPosApi/*.db-wal
