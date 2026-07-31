@@ -13,9 +13,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-var dbPath = Path.Combine(builder.Environment.ContentRootPath, "lumensoft.db");
+var connectionString = builder.Configuration.GetConnectionString("LumensoftConnection")
+    ?? "Server=(localdb)\\MSSQLLocalDB;Database=LumensoftPosDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 builder.Services.AddDbContext<LumensoftDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseSqlServer(connectionString));
 
 var app = builder.Build();
 
@@ -30,22 +31,22 @@ app.UseHttpsRedirection();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LumensoftDbContext>();
-    db.Database.Migrate();
+    db.Database.EnsureCreated();
 
     if (!db.Products.Any())
     {
         db.Products.AddRange(
-            new Product { Code = "P-001", Name = "Laptop", CostPrice = 85000, RetailPrice = 105000, ImageUrl = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=300&q=80", Comment = "Business laptop", Status = "Active" },
-            new Product { Code = "P-002", Name = "Laptop Bag", CostPrice = 3000, RetailPrice = 4500, ImageUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80", Comment = "Premium bag", Status = "Active" },
-            new Product { Code = "P-003", Name = "Mouse", CostPrice = 1200, RetailPrice = 1800, ImageUrl = "https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=300&q=80", Comment = "Ergonomic mouse", Status = "Active" }
+            new Product { Code = "P-001", Name = "Laptop", CostPrice = 85000, RetailPrice = 105000, ImageUrl = "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=300&q=80", Comment = "Business laptop", EnteredDate = DateTime.Today, CreationDate = DateTime.UtcNow, Status = "Active" },
+            new Product { Code = "P-002", Name = "Laptop Bag", CostPrice = 3000, RetailPrice = 4500, ImageUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80", Comment = "Premium bag", EnteredDate = DateTime.Today, CreationDate = DateTime.UtcNow, Status = "Active" },
+            new Product { Code = "P-003", Name = "Mouse", CostPrice = 1200, RetailPrice = 1800, ImageUrl = "https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=300&q=80", Comment = "Ergonomic mouse", EnteredDate = DateTime.Today, CreationDate = DateTime.UtcNow, Status = "Active" }
         );
     }
 
     if (!db.Salespersons.Any())
     {
         db.Salespersons.AddRange(
-            new Salesperson { Code = "SP-001", Name = "Ahmed Khan", Phone = "03001234567", Email = "ahmed@lumensoft.com", Address = "Lahore", Status = "Active" },
-            new Salesperson { Code = "SP-002", Name = "Sana Ali", Phone = "03009876543", Email = "sana@lumensoft.com", Address = "Karachi", Status = "Active" }
+            new Salesperson { Code = "SP-001", Name = "Ahmed Khan", EnteredDate = DateTime.Today, Phone = "03001234567", Email = "ahmed@lumensoft.com", Address = "Lahore", Status = "Active" },
+            new Salesperson { Code = "SP-002", Name = "Sana Ali", EnteredDate = DateTime.Today, Phone = "03009876543", Email = "sana@lumensoft.com", Address = "Karachi", Status = "Active" }
         );
     }
 
@@ -79,11 +80,14 @@ app.MapPost("/api/products", async (Product product, LumensoftDbContext db) =>
 
     product.Code = product.Code.Trim();
     product.Name = product.Name.Trim();
+    product.Comment = product.Comment?.Trim();
+    product.EnteredDate = product.EnteredDate == default ? DateTime.Today : product.EnteredDate.Date;
+    product.CreationDate = DateTime.UtcNow;
     db.Products.Add(product);
     await db.SaveChangesAsync();
     return Results.Created($"/api/products/{product.Id}", product);
 });
-app.MapPut("/api/products/{id}", async (int id, Product updated, LumensoftDbContext db) =>
+app.MapPut("/api/products/{id}", async (string id, Product updated, LumensoftDbContext db) =>
 {
     var existing = await db.Products.FindAsync(id);
     if (existing is null) return Results.NotFound();
@@ -113,13 +117,14 @@ app.MapPut("/api/products/{id}", async (int id, Product updated, LumensoftDbCont
     existing.Name = updated.Name.Trim();
     existing.CostPrice = updated.CostPrice;
     existing.RetailPrice = updated.RetailPrice;
-    existing.ImageUrl = updated.ImageUrl;
-    existing.Comment = updated.Comment;
+    existing.ImageUrl = updated.ImageUrl?.Trim();
+    existing.Comment = updated.Comment?.Trim();
+    existing.EnteredDate = updated.EnteredDate == default ? existing.EnteredDate : updated.EnteredDate.Date;
     existing.Status = updated.Status;
     await db.SaveChangesAsync();
     return Results.Ok(existing);
 });
-app.MapDelete("/api/products/{id}", async (int id, LumensoftDbContext db) =>
+app.MapDelete("/api/products/{id}", async (string id, LumensoftDbContext db) =>
 {
     var existing = await db.Products.FindAsync(id);
     if (existing is null) return Results.NotFound();
@@ -146,6 +151,7 @@ app.MapPost("/api/salespersons", async (Salesperson salesperson, LumensoftDbCont
 
     salesperson.Code = salesperson.Code.Trim();
     salesperson.Name = salesperson.Name.Trim();
+    salesperson.EnteredDate = salesperson.EnteredDate == default ? DateTime.Today : salesperson.EnteredDate.Date;
     salesperson.Phone = salesperson.Phone.Trim();
     salesperson.Email = salesperson.Email.Trim();
     salesperson.Address = salesperson.Address.Trim();
@@ -173,6 +179,7 @@ app.MapPut("/api/salespersons/{id}", async (int id, Salesperson updated, Lumenso
 
     existing.Code = updated.Code.Trim();
     existing.Name = updated.Name.Trim();
+    existing.EnteredDate = updated.EnteredDate == default ? existing.EnteredDate : updated.EnteredDate.Date;
     existing.Phone = updated.Phone.Trim();
     existing.Email = updated.Email.Trim();
     existing.Address = updated.Address.Trim();
@@ -202,12 +209,17 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
         return Results.BadRequest(new { message = "At least one product is required." });
     }
 
+    if (sale.SaleDate.Date != DateTime.Today)
+    {
+        return Results.BadRequest(new { message = "Sale date must be today." });
+    }
+
     if (sale.Items.Any(item => item.Quantity <= 0))
     {
         return Results.BadRequest(new { message = "Each product quantity must be greater than zero." });
     }
 
-    if (sale.Items.Any(item => item.Discount < 0 || item.Discount > (item.Price * item.Quantity)))
+    if (sale.Items.Any(item => item.Discount < 0 || item.Discount > (item.RetailPrice * item.Quantity)))
     {
         return Results.BadRequest(new { message = "Discount must be zero or more and cannot exceed the line total." });
     }
@@ -224,7 +236,7 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
     }
 
     var productIds = sale.Items.Select(item => item.ProductId).Distinct().ToList();
-    var products = await db.Products.Where(product => productIds.Contains(product.Id)).ToListAsync();
+    var products = await db.Products.Where(product => productIds.Contains(product.Code)).ToListAsync();
     if (products.Count != productIds.Count)
     {
         return Results.BadRequest(new { message = "One or more selected products were not found." });
@@ -242,8 +254,8 @@ app.MapPost("/api/sales", async (Sale sale, LumensoftDbContext db) =>
     }
 
     sale.InvoiceNo = sale.InvoiceNo.Trim();
-    sale.SaleDate = DateTime.Now;
-    sale.GrandTotal = sale.Items.Sum(item => item.Total);
+    sale.SaleDate = DateTime.Today;
+    sale.Total = sale.Items.Sum(item => item.Total);
     db.Sales.Add(sale);
     await db.SaveChangesAsync();
     return Results.Created($"/api/sales/{sale.Id}", sale);
@@ -252,7 +264,7 @@ app.MapDelete("/api/sales/{id}", async (int id, LumensoftDbContext db) =>
 {
     var existing = await db.Sales.Include(s => s.Items).FirstOrDefaultAsync(s => s.Id == id);
     if (existing is null) return Results.NotFound();
-    db.SaleItems.RemoveRange(existing.Items);
+    db.SaleDetails.RemoveRange(existing.Items);
     db.Sales.Remove(existing);
     await db.SaveChangesAsync();
     return Results.NoContent();
