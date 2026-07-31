@@ -76,8 +76,9 @@ The frontend API client points to `http://localhost:5298/api`, matching the back
 ### Database
 - Microsoft SQL Server
 
-```
+
 ## Project Structure
+```
 Pos-system/
 
 Frontend/
@@ -161,11 +162,6 @@ Developed as part of the Lumensoft Technologies Evaluation.
 
 ---
 # React + TypeScript + Vite
-
-## React Compiler
-
-The React Compiler is not enabled on this due to its impact on dev & build performance.
-
 ## Expanding the Oxlint configuration
 
 ```json
@@ -183,6 +179,7 @@ The React Compiler is not enabled on this due to its impact on dev & build perfo
 ```
 ---
 ## Deployement:
+Future Deployment
 ```
 Frontend on Vercel
 Backend and Database on Railway
