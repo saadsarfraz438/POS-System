@@ -31,7 +31,6 @@ app.UseHttpsRedirection();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LumensoftDbContext>();
-    db.Database.EnsureDeleted();
     db.Database.EnsureCreated();
 
     if (!db.Products.Any())
@@ -129,6 +128,13 @@ app.MapDelete("/api/products/{id}", async (string id, LumensoftDbContext db) =>
 {
     var existing = await db.Products.FindAsync(id);
     if (existing is null) return Results.NotFound();
+
+    var isReferenced = await db.SaleDetails.AnyAsync(item => item.ProductId == id);
+    if (isReferenced)
+    {
+        return Results.Conflict(new { message = "Product cannot be deleted because it is already used in a sale." });
+    }
+
     db.Products.Remove(existing);
     await db.SaveChangesAsync();
     return Results.NoContent();

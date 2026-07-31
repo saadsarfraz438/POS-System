@@ -191,7 +191,7 @@ export default function PosPage() {
           productId: item.id,
           productName: item.name,
           quantity: item.qty,
-          price: item.retailPrice,
+          retailPrice: item.retailPrice,
           discount: discountAmount,
           total: item.retailPrice * item.qty - discountAmount,
         };
