@@ -20,7 +20,7 @@ import { getDefaultPathForRole, getStoredSession } from './lib/auth.ts';
 function ProtectedRoute({ children, roles }: { children: ReactNode; roles: Array<'admin' | 'salesperson'> }) {
   const session = getStoredSession();
 
-  if (!session || !session.role) {
+  if (!session?.token || !session.role) {
     return <Navigate to="/login" replace />;
   }
 
@@ -33,7 +33,7 @@ function ProtectedRoute({ children, roles }: { children: ReactNode; roles: Array
 
 function HomeRedirect() {
   const session = getStoredSession();
-  return <Navigate to={session?.role ? getDefaultPathForRole(session.role) : '/login'} replace />;
+  return <Navigate to={session?.token && session.role ? getDefaultPathForRole(session.role) : '/login'} replace />;
 }
 
 export default function App() {
@@ -53,7 +53,6 @@ export default function App() {
         </Route>
         <Route path="/sales" element={<ProtectedRoute roles={['salesperson']}><MainLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="pos" replace />} />
-          <Route path="products" element={<ProductsPage />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

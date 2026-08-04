@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pencil, Trash2, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
+import FormField from '../components/FormField.jsx';
 import { getSalespersons, createSalesperson, updateSalesperson, deleteSalesperson } from '../services/api.js';
 
 const initialPayload = {
@@ -9,6 +10,7 @@ const initialPayload = {
   phone: '',
   email: '',
   address: '',
+  password: '',
   status: 'Active',
 };
 
@@ -45,11 +47,21 @@ export default function SalespersonsPage() {
       phone: form.phone.trim(),
       email: form.email.trim(),
       address: form.address.trim(),
+      password: form.password.trim(),
     };
+
+    if (!editingId && !payload.password) {
+      Swal.fire('Validation', 'Please set a password for the new salesperson.', 'warning');
+      return;
+    }
 
     if (!payload.code || !payload.name || !payload.phone || !payload.email || !payload.address) {
       Swal.fire('Validation', 'Please fill all required fields including address.', 'warning');
       return;
+    }
+
+    if (!payload.password) {
+      delete payload.password;
     }
 
     try {
@@ -75,6 +87,7 @@ export default function SalespersonsPage() {
       phone: salesperson.phone,
       email: salesperson.email,
       address: salesperson.address || '',
+        password: '',
       status: salesperson.status || 'Active',
     });
     setEditingId(salesperson.id);
@@ -111,33 +124,30 @@ export default function SalespersonsPage() {
               <h5 className="mb-3">Salesperson Management</h5>
               <form onSubmit={handleSubmit}>
                 <div className="row g-3">
-                  <div className="col-12">
-                    <label className="form-label">Salesperson Code</label>
+                  <FormField label="Salesperson Code" className="col-12">
                     <input className="form-control" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Salesperson Name</label>
+                  </FormField>
+                  <FormField label="Salesperson Name" className="col-12">
                     <input className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label">Phone</label>
+                  </FormField>
+                  <FormField label="Phone" className="col-6">
                     <input className="form-control" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label">Email</label>
+                  </FormField>
+                  <FormField label="Email" className="col-6">
                     <input type="email" className="form-control" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Address</label>
+                  </FormField>
+                  <FormField label="Password" hint={editingId ? 'Leave blank to keep the current password.' : 'Set the login password for this salesperson.'} className="col-12">
+                    <input type="password" className="form-control" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                  </FormField>
+                  <FormField label="Address" className="col-12">
                     <textarea className="form-control" rows="3" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Status</label>
+                  </FormField>
+                  <FormField label="Status" className="col-12">
                     <select className="form-select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
                     </select>
-                  </div>
+                  </FormField>
                 </div>
                 <div className="d-flex gap-2 mt-4">
                   <button className="btn btn-success" type="submit">{editingId ? 'Update' : 'Save'}</button>

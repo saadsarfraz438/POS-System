@@ -16,13 +16,12 @@ const iconMap = {
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // 1. Session & Routing Config
+
   const session = getStoredSession();
   const role = session?.role || 'salesperson';
   const basePath = role === 'admin' ? '/admin' : '/sales';
+  const displayName = session?.displayName || session?.email || (role === 'admin' ? 'Admin' : 'Salesperson');
   
-  // Map menu options and attach corresponding icons
   const menu = getRoleMenu(role).map((item) => ({
     ...item,
     to: `${basePath}/${item.to}`,
@@ -31,12 +30,10 @@ export default function MainLayout() {
   
   const pageTitle = menu.find((item) => location.pathname === item.to)?.label || 'Point of Sale';
 
-  // 2. Component State
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
-  // 3. Side Effects (Notifications & Theme Sync)
   useEffect(() => {
     const loadNotifications = () => {
       try {
@@ -57,11 +54,9 @@ export default function MainLayout() {
       setDarkMode(isDark);
     };
 
-    // Initial load
     loadNotifications();
     syncTheme();
 
-    // Event listeners for real-time updates
     window.addEventListener('lumensoft:notifications', loadNotifications);
     window.addEventListener('lumensoft:settings', syncTheme);
     window.addEventListener('storage', loadNotifications);
@@ -73,7 +68,6 @@ export default function MainLayout() {
     };
   }, []);
 
-  // 4. Action Handlers
   const handleLogout = () => {
     clearSession();
     navigate('/login');
@@ -91,13 +85,12 @@ export default function MainLayout() {
 
   return (
     <div className="app-shell">
-      {/* Sidebar Layout */}
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="brand-mark">POS</div>
           <div>
             <h4 className="mb-0">Lumensoft</h4>
-            <small>{role === 'admin' ? ' ADMIN' : 'SALESPERSON '}</small>
+            <small>{displayName}</small>
           </div>
         </div>
         
@@ -124,7 +117,6 @@ export default function MainLayout() {
         </div>
       </aside>
 
-      {/* Main Topbar & Page View */}
       <main className="content-area">
         <header className="topbar">
           <div className="d-flex align-items-center gap-3">
@@ -157,7 +149,6 @@ export default function MainLayout() {
           </div>
         </header>
 
-        {/* Dynamic Notification Popover */}
         {showNotifications && (
           <div className="notification-panel shadow-sm">
             <h6 className="mb-3">Notifications</h6>

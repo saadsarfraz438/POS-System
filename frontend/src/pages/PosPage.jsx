@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 import SectionCard from '../components/SectionCard.jsx';
-import { getProducts, getSalespersons, createSale } from '../services/api.js';
-import { getStoredSettings } from '../lib/auth.js';
+import { getProducts, getSalespersons, createSale, getCurrentUser } from '../services/api.js';
+import { getStoredSession, getStoredSettings } from '../lib/auth.ts';
+import { buildReceiptHtml, buildReceiptText } from '../lib/receipt.ts';
 
 const getTodayDateValue = () => {
   const now = new Date();
@@ -24,10 +25,13 @@ const addNotification = (message) => {
 };
 
 export default function PosPage() {
+  const session = getStoredSession();
+  const isAdmin = session?.role === 'admin';
   const [products, setProducts] = useState([]);
   const [salespersons, setSalespersons] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSalesperson, setSelectedSalesperson] = useState('');
+  const [selectedSalesperson, setSelectedSalesperson] = useState(String(session?.salespersonId || ''));
+  const [currentUser, setCurrentUser] = useState(session || null);
   const [invoiceNo, setInvoiceNo] = useState(`INV-${Date.now().toString().slice(-5)}`);
   const [saleDate, setSaleDate] = useState(today);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -38,9 +42,24 @@ export default function PosPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [productsRes, salespersonsRes] = await Promise.all([getProducts(), getSalespersons()]);
+        const [productsRes, meRes] = await Promise.all([getProducts(), getCurrentUser()]);
         setProducts(productsRes.data || []);
-        setSalespersons(salespersonsRes.data || []);
+        setCurrentUser(meRes.data || session || null);
+
+        if (isAdmin) {
+          const salespersonsRes = await getSalespersons();
+          setSalespersons(salespersonsRes.data || []);
+        } else if (meRes.data?.salespersonId) {
+          setSalespersons([
+            {
+              id: meRes.data.salespersonId,
+              name: meRes.data.displayName,
+              email: meRes.data.email,
+              status: 'Active',
+            },
+          ]);
+          setSelectedSalesperson(String(meRes.data.salespersonId));
+        }
       } catch (error) {
         console.error(error);
       }
@@ -54,11 +73,19 @@ export default function PosPage() {
       window.removeEventListener('storage', syncSettings);
       window.removeEventListener('lumensoft:settings', syncSettings);
     };
-  }, []);
+  }, [isAdmin]);
 
   const activeProducts = useMemo(() => products.filter((product) => isActiveStatus(product.status)), [products]);
 
   const activeSalespersons = useMemo(() => salespersons.filter((person) => isActiveStatus(person.status)), [salespersons]);
+
+  const activeSalespersonName = useMemo(() => {
+    if (isAdmin) {
+      return activeSalespersons.find((person) => String(person.id) === String(selectedSalesperson))?.name || '';
+    }
+
+    return currentUser?.displayName || currentUser?.email || '';
+  }, [activeSalespersons, currentUser, isAdmin, selectedSalesperson]);
 
   const filteredProducts = useMemo(() => {
     const visibleProducts = activeProducts;
@@ -67,10 +94,10 @@ export default function PosPage() {
   }, [activeProducts, searchTerm]);
 
   useEffect(() => {
-    if (selectedSalesperson && !activeSalespersons.some((person) => String(person.id) === String(selectedSalesperson))) {
+    if (isAdmin && selectedSalesperson && !activeSalespersons.some((person) => String(person.id) === String(selectedSalesperson))) {
       setSelectedSalesperson('');
     }
-  }, [activeSalespersons, selectedSalesperson]);
+  }, [activeSalespersons, isAdmin, selectedSalesperson]);
 
   useEffect(() => {
     if (selectedItems.length === 0) return;
@@ -137,12 +164,19 @@ export default function PosPage() {
   const discountEnabled = settings.discountEnabled !== false;
 
   const saveSale = async () => {
-    if (!selectedSalesperson || selectedItems.length === 0) {
+    if ((isAdmin && !selectedSalesperson) || selectedItems.length === 0) {
       Swal.fire('Validation', 'Choose a salesperson and add at least one product.', 'warning');
       return;
     }
 
-    const salesperson = activeSalespersons.find((item) => String(item.id) === String(selectedSalesperson));
+    if (!isAdmin && !currentUser?.salespersonId) {
+      Swal.fire('Validation', 'Your salesperson profile was not loaded correctly. Please log in again.', 'warning');
+      return;
+    }
+
+    const salesperson = isAdmin
+      ? activeSalespersons.find((item) => String(item.id) === String(selectedSalesperson))
+      : { id: currentUser?.salespersonId, name: currentUser?.displayName || currentUser?.email || 'Salesperson' };
     if (!salesperson) {
       Swal.fire('Validation', 'Please choose an active salesperson.', 'warning');
       return;
@@ -182,7 +216,7 @@ export default function PosPage() {
     const payload = {
       invoiceNo: invoiceNo.trim(),
       saleDate: effectiveSaleDate,
-      salespersonId: Number(selectedSalesperson),
+      salespersonId: Number(isAdmin ? selectedSalesperson : currentUser?.salespersonId),
       salespersonName,
       grandTotal,
       items: selectedItems.map((item) => {
@@ -213,36 +247,38 @@ export default function PosPage() {
   };
 
   const handlePrintReceipt = () => {
-    const salespersonName = salespersons.find((item) => String(item.id) === String(selectedSalesperson))?.name || 'N/A';
+    const salespersonName = activeSalespersonName || 'N/A';
     const receiptDateTime = new Date().toLocaleString();
     const formatDiscount = (item) => item.discountType === 'cash' ? `Rs ${Number(item.discountValue || 0).toLocaleString()}` : `${Number(item.discountValue || 0).toLocaleString()}%`;
-    const receipt = [
-      'Lumensoft POS ',
-      'Customer Receipt',
-      '  ',
-      `Invoice: ${invoiceNo}`,
-      `Salesperson: ${salespersonName}`,
-      `Date: ${receiptDateTime}`,
-      ' ',
-      '------------------------------',
-      ' ',
-      'Description(B)  Qty  price(Rs)',
-      ' ',
-      ...selectedItems.map((item) => `${item.name} x${item.qty} - ${formatDiscount(item)} = Rs ${Number(item.retailPrice * item.qty - lineDiscount(item)).toLocaleString()}`),
-      '   ',
-      '------------------------------',
-      `Subtotal: Rs ${subtotal.toLocaleString()}`,
-      `Tax (${taxRate}%): Rs ${taxAmount.toLocaleString()}`,
-      `Discount: Rs ${discount.toLocaleString()}`,
-      `Grand Total: Rs ${grandTotal.toLocaleString()}`,
-      ' ',
-      '********   *********  *********',
-      ' ',
-      '** THANK YOU ** ',
-      '** LUMENSOFT pos **',
-    ].join('\n');
+    const receiptItems = selectedItems.map((item) => {
+      const itemDiscount = lineDiscount(item);
+      return {
+        name: item.name,
+        qty: item.qty,
+        unitPrice: item.retailPrice,
+        discountLabel: formatDiscount(item),
+        lineTotal: item.retailPrice * item.qty - itemDiscount,
+      };
+    });
 
-    const blob = new Blob([receipt], { type: 'text/plain;charset=utf-8' });
+    const receiptPayload = {
+      companyName: settings.companyName || 'Lumensoft POS',
+      invoiceNo,
+      salespersonName,
+      receiptDateTime,
+      currency: 'Rs',
+      items: receiptItems,
+      subtotal,
+      taxRate,
+      taxAmount,
+      discount,
+      grandTotal,
+    };
+
+    const receiptText = buildReceiptText(receiptPayload);
+    const receiptHtml = buildReceiptHtml(receiptPayload);
+
+    const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -253,7 +289,7 @@ export default function PosPage() {
     if (settings.printEnabled !== false) {
       const printWindow = window.open('', '_blank', 'width=600,height=800');
       if (printWindow) {
-        printWindow.document.write(`<pre>${receipt.replace(/</g, '&lt;')}</pre>`);
+        printWindow.document.write(receiptHtml);
         printWindow.document.close();
         printWindow.focus();
         printWindow.print();
@@ -267,10 +303,17 @@ export default function PosPage() {
         <div className="row g-3 align-items-end">
           <div className="col-12 col-md-3">
             <label className="form-label">Salesperson</label>
-            <select className="form-select" value={selectedSalesperson} onChange={(e) => setSelectedSalesperson(e.target.value)}>
-              <option value="">Choose salesperson</option>
+            {isAdmin ? (
+              <select className="form-select" value={selectedSalesperson} onChange={(e) => setSelectedSalesperson(e.target.value)}>
+                <option value="">Choose salesperson</option>
                 {activeSalespersons.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-            </select>
+              </select>
+            ) : (
+              <div className="form-control d-flex align-items-center justify-content-between">
+                <span>{currentUser?.displayName || currentUser?.email || 'Salesperson'}</span>
+                <span className="badge bg-primary">Assigned</span>
+              </div>
+            )}
           </div>
           <div className="col-12 col-md-3">
             <label className="form-label">Sale Date</label>

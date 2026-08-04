@@ -9,6 +9,7 @@ public class LumensoftDbContext : DbContext
 
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Salesperson> Salespersons => Set<Salesperson>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleDetail> SaleDetails => Set<SaleDetail>();
 
@@ -46,6 +47,23 @@ public class LumensoftDbContext : DbContext
             entity.HasIndex(s => s.Code).IsUnique();
             entity.HasIndex(s => s.Phone).IsUnique();
             entity.HasIndex(s => s.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.ToTable("AppUsers");
+            entity.Property(u => u.Id).HasColumnName("AppUserId");
+            entity.Property(u => u.Email).IsRequired().HasMaxLength(150);
+            entity.Property(u => u.PasswordHash).IsRequired().HasMaxLength(500);
+            entity.Property(u => u.Role).IsRequired().HasMaxLength(20);
+            entity.Property(u => u.CreatedAt).HasColumnType("datetime2");
+            entity.Property(u => u.IsActive).HasDefaultValue(true);
+            entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.SalespersonId).IsUnique().HasFilter("[SalespersonId] IS NOT NULL");
+            entity.HasOne(u => u.Salesperson)
+                .WithOne()
+                .HasForeignKey<AppUser>(u => u.SalespersonId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Sale>(entity =>

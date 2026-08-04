@@ -64,6 +64,84 @@ public class Salesperson
     public List<Sale> Sales { get; set; } = new();
 }
 
+public class AppUser
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [EmailAddress]
+    [MaxLength(150)]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    [Required]
+    public string PasswordHash { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(20)]
+    public string Role { get; set; } = "salesperson";
+
+    public int? SalespersonId { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [JsonIgnore]
+    public Salesperson? Salesperson { get; set; }
+}
+
+public class LoginRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Password { get; set; } = string.Empty;
+}
+
+public class SalespersonUpsertRequest
+{
+    [Required]
+    public string Code { get; set; } = string.Empty;
+
+    [Required]
+    public string Name { get; set; } = string.Empty;
+
+    public DateTime EnteredDate { get; set; } = DateTime.Today;
+
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Phone { get; set; } = string.Empty;
+
+    [Required]
+    public string Address { get; set; } = string.Empty;
+
+    public string Status { get; set; } = "Active";
+
+    public string? Password { get; set; }
+}
+
+public class AuthUserResponse
+{
+    public int Id { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public int? SalespersonId { get; set; }
+}
+
+public class AuthResponse
+{
+    public string Token { get; set; } = string.Empty;
+    public AuthUserResponse User { get; set; } = new();
+}
+
 public class SaleDetail
 {
     [Key]

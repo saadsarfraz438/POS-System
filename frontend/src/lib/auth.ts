@@ -4,21 +4,17 @@ export const SETTINGS_KEY = 'lumensoft-settings';
 
 export type AppRole = 'admin' | 'salesperson';
 
-export const AUTH_PROFILES = {
-  admin: {
-    role: 'admin' as const,
-    label: 'Admin',
-    email: 'admin@lumensoft.com',
-    password: 'admin123',
-    defaultPath: '/admin/dashboard',
-  },
-  salesperson: {
-    role: 'salesperson' as const,
-    label: 'Salesperson',
-    email: 'salesperson@lumensoft.com',
-    password: 'sales123',
-    defaultPath: '/sales/pos',
-  },
+export type AuthSession = {
+  token: string;
+  role: AppRole;
+  email: string;
+  displayName: string;
+  salespersonId?: number | null;
+};
+
+export const DEFAULT_PATHS: Record<AppRole, string> = {
+  admin: '/admin/dashboard',
+  salesperson: '/sales/pos',
 };
 
 export const ROLE_MENUS = {
@@ -32,7 +28,6 @@ export const ROLE_MENUS = {
   ],
   salesperson: [
     { to: 'pos', label: 'Point of Sale', icon: 'cart' },
-    { to: 'products', label: 'Products', icon: 'boxes' },
     { to: 'settings', label: 'Settings', icon: 'settings' },
   ],
 };
@@ -69,25 +64,20 @@ export const getStoredSession = () => {
     return null;
   }
 
-  const stored = readJson(AUTH_SESSION_KEY, null) as { role?: AppRole; email?: string } | null;
-  if (stored?.role && stored?.email) {
+  const stored = readJson(AUTH_SESSION_KEY, null) as AuthSession | null;
+  if (stored?.role && stored?.email && stored?.token) {
     return stored;
-  }
-
-  if (window.localStorage.getItem(AUTH_FLAG_KEY) === 'true') {
-    return { role: 'admin' as const, email: AUTH_PROFILES.admin.email };
   }
 
   return null;
 };
 
-export const saveSession = (session: { role: AppRole; email: string }) => {
+export const saveSession = (session: AuthSession) => {
   if (typeof window === 'undefined') {
     return;
   }
 
   window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
-  window.localStorage.setItem(AUTH_FLAG_KEY, 'true');
 };
 
 export const clearSession = () => {
@@ -96,9 +86,8 @@ export const clearSession = () => {
   }
 
   window.localStorage.removeItem(AUTH_SESSION_KEY);
-  window.localStorage.removeItem(AUTH_FLAG_KEY);
 };
 
-export const getDefaultPathForRole = (role: AppRole) => AUTH_PROFILES[role]?.defaultPath || '/login';
+export const getDefaultPathForRole = (role: AppRole) => DEFAULT_PATHS[role] || '/login';
 
 export const getRoleMenu = (role: AppRole) => ROLE_MENUS[role] || ROLE_MENUS.salesperson;

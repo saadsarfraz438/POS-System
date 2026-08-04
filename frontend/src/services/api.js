@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getStoredSession } from '../lib/auth.ts';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5298/api';
 
@@ -6,6 +7,18 @@ const api = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
 });
+
+api.interceptors.request.use((config) => {
+  const session = getStoredSession();
+  if (session?.token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${session.token}`;
+  }
+  return config;
+});
+
+export const login = (payload) => api.post('/auth/login', payload);
+export const getCurrentUser = () => api.get('/auth/me');
 
 export const getProducts = () => api.get('/products');
 export const createProduct = (payload) => api.post('/products', payload);
