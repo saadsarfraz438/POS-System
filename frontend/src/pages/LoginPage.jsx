@@ -70,6 +70,9 @@ export default function LoginPage() {
               Passwords for salespersons are managed by the admin panel.
             </div>
             <button className="btn btn-primary w-100" type="submit">Login</button>
+            <small>Email: admin@lumensoft.com</small>
+            <div><small>Password: Admin@12345</small>
+</div>
           </form>
         </div>
       </div>
