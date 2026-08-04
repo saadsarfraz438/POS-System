@@ -50,6 +50,16 @@ cd backend/LumensoftPosApi
 dotnet run
 ```
 
+## Step 1: Database Setup (Azure SQL Database)
+
+To move the POS database to Azure, use Azure SQL Database and then update the backend connection string to point to the cloud server.
+
+1. Create a database by searching for **Azure SQL** in the Azure portal and selecting **Create SQL database**.
+2. Choose your subscription, create a unique server name, and use **SQL authentication** with an admin username and password.
+3. Name the database `pos_db` and select a cost-friendly tier such as **Serverless** or **S0**.
+4. In **Networking**, add your current IP address and enable **Allow Azure services and resources to access this server** so the backend can connect.
+5. After deployment, replace `LumensoftConnection` in [backend/LumensoftPosApi/appsettings.json](backend/LumensoftPosApi/appsettings.json) with the Azure SQL connection string.
+
 ## Notes
 
 The frontend API client points to `http://localhost:5298/api`, matching the backend launch profile in [backend/LumensoftPosApi/Properties/launchSettings.json](backend/LumensoftPosApi/Properties/launchSettings.json).
