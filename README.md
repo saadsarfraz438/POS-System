@@ -52,13 +52,26 @@ dotnet run
 
 ## Step 1: Database Setup (Azure SQL Database)
 
-To move the POS database to Azure, use Azure SQL Database and then update the backend connection string to point to the cloud server.
+Move the POS database to Azure SQL Database first, then point the backend at the new cloud database.
 
-1. Create a database by searching for **Azure SQL** in the Azure portal and selecting **Create SQL database**.
+1. In the Azure portal, search for **Azure SQL** and select **Create SQL database**.
 2. Choose your subscription, create a unique server name, and use **SQL authentication** with an admin username and password.
 3. Name the database `pos_db` and select a cost-friendly tier such as **Serverless** or **S0**.
 4. In **Networking**, add your current IP address and enable **Allow Azure services and resources to access this server** so the backend can connect.
-5. After deployment, replace `LumensoftConnection` in [backend/LumensoftPosApi/appsettings.json](backend/LumensoftPosApi/appsettings.json) with the Azure SQL connection string.
+
+## Step 2: Update the Backend Connection
+
+The API reads its database settings from `LumensoftConnection` in [backend/LumensoftPosApi/appsettings.json](backend/LumensoftPosApi/appsettings.json).
+
+1. Replace the local SQL Server value with the Azure SQL connection string from the Azure portal.
+2. If you want a separate local development setup, keep the current LocalDB value in [backend/LumensoftPosApi/appsettings.Development.json](backend/LumensoftPosApi/appsettings.Development.json) or set a different Azure connection string there.
+3. Run the backend again and confirm it can connect to the cloud database.
+
+## Step 3: Verify the Setup
+
+1. Start the backend with `dotnet run` from [backend/LumensoftPosApi](backend/LumensoftPosApi).
+2. Open the app and confirm login, products, salespersons, and sales records load correctly.
+3. If the app cannot connect, recheck the Azure SQL firewall rules and the connection string.
 
 ## Notes
 
