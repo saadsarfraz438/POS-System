@@ -23,7 +23,11 @@ builder.Services.AddCors(options =>
 var connectionString = builder.Configuration.GetConnectionString("LumensoftConnection")
     ?? "Server=(localdb)\\MSSQLLocalDB;Database=LumensoftPosDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 builder.Services.AddDbContext<LumensoftDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sqlOptions =>
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null)));
 
 var authSection = builder.Configuration.GetSection("Auth");
 var signingKey = authSection["SigningKey"] ?? "LumensoftPosApi-Development-Only-Secret-Key-Change-In-Azure";
@@ -70,6 +74,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LumensoftDbContext>();
     db.Database.EnsureCreated();
+    await EnsureDomainSchemaAsync(db);
     await EnsureAuthSchemaAsync(db);
 
     if (!await db.Products.AnyAsync())
@@ -250,8 +255,6 @@ app.MapPost("/api/salespersons", async (SalespersonUpsertRequest request, Lumens
         return Results.BadRequest(new { message = "Salesperson password is required." });
     }
 
-    await using var transaction = await db.Database.BeginTransactionAsync();
-
     var normalizedEmail = NormalizeEmail(request.Email);
     var duplicateCode = await db.Salespersons.AnyAsync(s => s.Code.ToLower() == request.Code.Trim().ToLower());
     var duplicatePhone = await db.Salespersons.AnyAsync(s => s.Phone.ToLower() == request.Phone.Trim().ToLower());
@@ -273,20 +276,18 @@ app.MapPost("/api/salespersons", async (SalespersonUpsertRequest request, Lumens
     };
 
     db.Salespersons.Add(salesperson);
-    await db.SaveChangesAsync();
 
     var appUser = new AppUser
     {
         Email = normalizedEmail,
         Role = "salesperson",
-        SalespersonId = salesperson.Id,
+        Salesperson = salesperson,
         IsActive = string.Equals(salesperson.Status, "Active", StringComparison.OrdinalIgnoreCase),
         PasswordHash = new PasswordHasher<AppUser>().HashPassword(new AppUser { Email = normalizedEmail, Role = "salesperson" }, request.Password.Trim())
     };
 
     db.AppUsers.Add(appUser);
     await db.SaveChangesAsync();
-    await transaction.CommitAsync();
     return Results.Created($"/api/salespersons/{salesperson.Id}", salesperson);
 }).RequireAuthorization("AdminOnly");
 
@@ -299,8 +300,6 @@ app.MapPut("/api/salespersons/{id}", async (int id, SalespersonUpsertRequest req
     {
         return Results.BadRequest(new { message = "Salesperson code, name, phone, email, and address are required." });
     }
-
-    await using var transaction = await db.Database.BeginTransactionAsync();
 
     var normalizedEmail = NormalizeEmail(request.Email);
     var duplicateCode = await db.Salespersons.AnyAsync(s => s.Id != id && s.Code.ToLower() == request.Code.Trim().ToLower());
@@ -333,7 +332,6 @@ app.MapPut("/api/salespersons/{id}", async (int id, SalespersonUpsertRequest req
     }
 
     await db.SaveChangesAsync();
-    await transaction.CommitAsync();
     return Results.Ok(existing);
 }).RequireAuthorization("AdminOnly");
 
@@ -501,6 +499,79 @@ app.MapDelete("/api/sales/{id}", async (int id, LumensoftDbContext db) =>
 }).RequireAuthorization("AdminOnly");
 
 app.Run();
+
+static async Task EnsureDomainSchemaAsync(LumensoftDbContext db)
+{
+    var createDomainTablesSql = """
+IF OBJECT_ID(N'[dbo].[Products]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[Products](
+        [ProductCode] NVARCHAR(50) NOT NULL CONSTRAINT [PK_Products] PRIMARY KEY,
+        [Name] NVARCHAR(150) NOT NULL,
+        [ImageURL] NVARCHAR(500) NULL,
+        [EnteredDate] DATE NOT NULL,
+        [CostPrice] DECIMAL(12,2) NOT NULL,
+        [RetailPrice] DECIMAL(12,2) NOT NULL,
+        [Comments] NVARCHAR(500) NULL,
+        [CreationDate] DATETIME2 NOT NULL,
+        [Status] NVARCHAR(20) NOT NULL,
+        CONSTRAINT [CK_Products_CostPrice_Positive] CHECK ([CostPrice] > 0),
+        CONSTRAINT [CK_Products_RetailPrice_GreaterThan_CostPrice] CHECK ([RetailPrice] > [CostPrice])
+    );
+END
+
+IF OBJECT_ID(N'[dbo].[Salesperson]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[Salesperson](
+        [SalespersonID] INT IDENTITY(1,1) NOT NULL CONSTRAINT [PK_Salesperson] PRIMARY KEY,
+        [Code] NVARCHAR(50) NOT NULL,
+        [Name] NVARCHAR(150) NOT NULL,
+        [EnteredDate] DATE NOT NULL,
+        [Phone] NVARCHAR(30) NOT NULL,
+        [Email] NVARCHAR(150) NOT NULL,
+        [Address] NVARCHAR(250) NOT NULL,
+        [Status] NVARCHAR(20) NOT NULL,
+        CONSTRAINT [UX_Salesperson_Code] UNIQUE([Code]),
+        CONSTRAINT [UX_Salesperson_Phone] UNIQUE([Phone]),
+        CONSTRAINT [UX_Salesperson_Email] UNIQUE([Email])
+    );
+END
+
+IF OBJECT_ID(N'[dbo].[Sale]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[Sale](
+        [SaleId] INT IDENTITY(1,1) NOT NULL CONSTRAINT [PK_Sale] PRIMARY KEY,
+        [InvoiceNo] NVARCHAR(50) NOT NULL,
+        [Total] DECIMAL(12,2) NOT NULL,
+        [SaleDate] DATE NOT NULL,
+        [SalespersonId] INT NOT NULL,
+        [SalespersonName] NVARCHAR(150) NOT NULL,
+        CONSTRAINT [UX_Sale_InvoiceNo] UNIQUE([InvoiceNo]),
+        CONSTRAINT [FK_Sale_Salesperson_SalespersonId] FOREIGN KEY([SalespersonId]) REFERENCES [dbo].[Salesperson]([SalespersonID]) ON DELETE NO ACTION,
+        CONSTRAINT [CK_Sale_SaleDate_Today] CHECK (CONVERT(date, [SaleDate]) = CONVERT(date, GETDATE()))
+    );
+END
+
+IF OBJECT_ID(N'[dbo].[SaleDetail]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[SaleDetail](
+        [SaleDetailId] INT IDENTITY(1,1) NOT NULL CONSTRAINT [PK_SaleDetail] PRIMARY KEY,
+        [SaleId] INT NOT NULL,
+        [ProductId] NVARCHAR(50) NOT NULL,
+        [RetailPrice] DECIMAL(12,2) NOT NULL,
+        [Quantity] INT NOT NULL,
+        [Discount] DECIMAL(12,2) NOT NULL,
+        [Total] DECIMAL(12,2) NOT NULL,
+        CONSTRAINT [FK_SaleDetail_Sale_SaleId] FOREIGN KEY([SaleId]) REFERENCES [dbo].[Sale]([SaleId]) ON DELETE CASCADE,
+        CONSTRAINT [FK_SaleDetail_Products_ProductId] FOREIGN KEY([ProductId]) REFERENCES [dbo].[Products]([ProductCode]) ON DELETE NO ACTION,
+        CONSTRAINT [CK_SaleDetail_Quantity_Positive] CHECK ([Quantity] > 0),
+        CONSTRAINT [CK_SaleDetail_Discount_NonNegative] CHECK ([Discount] >= 0)
+    );
+END
+""";
+
+    await db.Database.ExecuteSqlRawAsync(createDomainTablesSql);
+}
 
 static async Task EnsureAuthSchemaAsync(LumensoftDbContext db)
 {
