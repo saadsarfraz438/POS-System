@@ -1,6 +1,21 @@
 # LumenSoft Point of Sale (POS) System
 
 A modern, fast, and secure Point of Sale (POS) application designed to streamline retail operations. This system automates checkout processes, tracks inventory in real-time, manages salepersons, and generates detailed sales analytics,the application is built using modern web technologies including React.js for the frontend, ASP.NET Core Web API for the backend, and SQL Server for database management.
+It Includes 
+* **Dashboard:** Rich business overview metrics.
+* **Dual Panels:** Separate, dedicated interfaces for Admins and Salespersons.
+* **Multi-Session Handling:** Run Admin and Sales sessions concurrently in the same browser without state collision.
+* **Role-Based Route Guarding:** Secure frontend routes to prevent unauthorized panel access.
+* **Product Management:** Complete CRUD operations for the inventory.
+* **Salesperson Management:** Complete CRUD operations for staff records.
+* **Point of Sale (POS):** Fast checkout interface with product search and autocomplete features.
+* **Sales Records:** Log, view, and audit past transactions.
+* **Receipt Generation:** Print or save structured digital purchase receipts.
+* **Notifications:** Sweet Alert Notifications.
+* **Security & Validation:** Secure REST API integration, robust frontend form validation via React Hook Form, and backend role validation.
+* **UX Enrichments:** Responsive Bootstrap UI, dark mode toggle, and SweetAlert2 notifications.
+
+---
 
 This workspace is split into two top-level folders:
 
@@ -8,10 +23,10 @@ This workspace is split into two top-level folders:
 - [backend](backend) contains the ASP.NET Core API project.
 
 ---
+
 ## Features
 
 - Dashboard with business overview
-- Admin and SalesPersons Panels
 - Multi-Session Handling
 - Role-Based Route Guarding
 - Product Management (CRUD)
@@ -24,60 +39,8 @@ This workspace is split into two top-level folders:
 - SQL Server Database
 - Responsive Bootstrap UI
 - Form Validation
-- SweetAlert Notifications
 - DarkMode function
 - Login & Logout feature (Admin and SalesPersons)
-  
-  ---
-
-## Run It
-```
-git clone https://github.com/saadsarfraz438
-cd POS-System
-
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Backend:
-
-```bash
-cd backend/LumensoftPosApi
-dotnet run
-```
-
-## Step 1: Database Setup (Azure SQL Database)
-
-Move the POS database to Azure SQL Database first, then point the backend at the new cloud database.
-
-1. In the Azure portal, search for **Azure SQL** and select **Create SQL database**.
-2. Choose your subscription, create a unique server name, and use **SQL authentication** with an admin username and password.
-3. Name the database `pos_db` and select a cost-friendly tier such as **Serverless** or **S0**.
-4. In **Networking**, add your current IP address and enable **Allow Azure services and resources to access this server** so the backend can connect.
-
-## Step 2: Update the Backend Connection
-
-The API reads its database settings from `LumensoftConnection` in [backend/LumensoftPosApi/appsettings.json](backend/LumensoftPosApi/appsettings.json).
-
-1. Replace the local SQL Server value with the Azure SQL connection string from the Azure portal.
-2. If you want a separate local development setup, keep the current LocalDB value in [backend/LumensoftPosApi/appsettings.Development.json](backend/LumensoftPosApi/appsettings.Development.json) or set a different Azure connection string there.
-3. Run the backend again and confirm it can connect to the cloud database.
-
-## Step 3: Verify the Setup
-
-1. Start the backend with `dotnet run` from [backend/LumensoftPosApi](backend/LumensoftPosApi).
-2. Open the app and confirm login, products, salespersons, and sales records load correctly.
-3. If the app cannot connect, recheck the Azure SQL firewall rules and the connection string.
-
-## Notes
-
-The frontend API client points to `http://localhost:5298/api`, matching the backend launch profile in [backend/LumensoftPosApi/Properties/launchSettings.json](backend/LumensoftPosApi/Properties/launchSettings.json).
 
 ## Tech Stack
 
@@ -99,8 +62,10 @@ The frontend API client points to `http://localhost:5298/api`, matching the back
 - REST API
 
 ### Database
+- Microsoft Azure
 - Microsoft SQL Server
 
+---
 
 ## Project Structure
 ```
@@ -145,7 +110,33 @@ backend/
         ├── project.assets.json
         └── project.nuget.cache     
 ```
+
 ---
+
+## Run It
+```
+git clone https://github.com/saadsarfraz438
+cd POS-System
+
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Backend:
+
+```bash
+cd backend/LumensoftPosApi
+dotnet run
+```
+
+---
+
 ## Functioning:
 Login Page for Admin and Salesperson
 
@@ -176,6 +167,34 @@ Salesperson Screen for POS
 Receipt printing option
 ![App Screenshot](frontend/assets/10.png)
 
+---
+
+## Upgarded Features
+
+### Multi-Session Role Authentication System
+
+### 1. Dual-Session Storage Prefixing
+* **Admin Session:** Stored under admin_token
+* **Sales Session:** Stored under sales_token
+
+### 2. Isolated Logout Logic
+
+* Clicking **Logout** on the Salesperson dashboard clears only sales_token.
+* The admin_token remains intact, preserving the administrator's active session in other tabs.
+
+### 3. Strict Role-Based Route Guarding
+
+* **Targeted Token Check:** Accessing /admin/* routes strictly validates the existence and integrity of admin_token.
+* **Contextual Redirection:** If a user with an active sales_token attempts to access an administrative link, the guard intercepts the request and redirects them to the /admin/login prompt rather than exposing the dashboard.
+
+### Route Guard Pseudo-Logic
+
+### Alternative Testing Strategies
+
+* **Incognito/Private Windows:** Open the salesperson dashboard in a private window to create a separate cookie jar.
+* **Cross-Browser Testing:** Use separate browser engines (e.g., Google Chrome for Admin tasks and Mozilla Firefox for Sales tasks).
+
+---
 
 ## Purpose
 
@@ -187,27 +206,13 @@ Developed as part of the Lumensoft Technologies Evaluation.
 
 ---
 # React + TypeScript + Vite
-## Expanding the Oxlint configuration
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
 ---
 ## Deployement:
 Future Deployment
 ```
-Frontend on Vercel
-Backend and Database on Railway
+Frontend on Vercel (Almost Completed)
+Backend and Database on Railway (Working)
+Databse on Azure (Completed)
 ```
 
 ## Contributing
