@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import FormField from '../components/FormField.jsx';
 import { getDefaultPathForRole, getStoredSession, saveSession } from '../lib/auth.ts';
 import { login } from '../services/api.js';
 
-export default function LoginPage() {
-  const session = getStoredSession();
+export default function LoginPage({ portalRole = null }) {
+  const session = getStoredSession(portalRole || undefined);
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const heading = portalRole === 'admin' ? 'Admin Login' : portalRole === 'salesperson' ? 'Salesperson Login' : 'Login';
+  const roleHint = portalRole === 'admin' ? 'Use admin credentials for this portal.' : portalRole === 'salesperson' ? 'Use salesperson credentials for this portal.' : 'Use your account credentials.';
 
   useEffect(() => {
     if (session?.token && session.role) {
@@ -29,13 +31,21 @@ export default function LoginPage() {
         throw new Error('Login failed.');
       }
 
+      if (portalRole && user.role !== portalRole) {
+        const requiredRoleName = portalRole === 'admin' ? 'admin' : 'salesperson';
+        const message = `This link accepts ${requiredRoleName} credentials only.`;
+        setError(message);
+        Swal.fire('Wrong portal', message, 'warning');
+        return;
+      }
+
       saveSession({
         token: response.data.token,
         role: user.role,
         email: user.email,
         displayName: user.displayName || user.email,
         salespersonId: user.salespersonId ?? null,
-      });
+      }, user.role);
       navigate(getDefaultPathForRole(user.role), { replace: true });
     } catch (loginError) {
       const message = loginError?.response?.data?.message || 'Invalid email or password.';
@@ -54,8 +64,8 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-4 text-center">
-            <h5 className="mb-1">Admin and Salesperson Login</h5>
-            <p className="text-muted mb-0">Use your email and password assigned in the system.</p>
+            <h5 className="mb-1">{heading}</h5>
+            <p className="text-muted mb-0">{roleHint}</p>
           </div>
 
           <form onSubmit={handleLogin}>
@@ -70,9 +80,11 @@ export default function LoginPage() {
               Passwords for salespersons are managed by the admin panel.
             </div>
             <button className="btn btn-primary w-100" type="submit">Login</button>
-            <small>Email: admin@lumensoft.com</small>
-            <div><small>Password: Admin@12345</small>
-</div>
+            <div className="small text-center mt-3">
+              <Link to="/admin/login">Admin login</Link>
+              {' | '}
+              <Link to="/sales/login">Salesperson login</Link>
+            </div>
           </form>
         </div>
       </div>

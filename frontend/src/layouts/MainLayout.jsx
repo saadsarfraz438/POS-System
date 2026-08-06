@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Boxes, Users, ShoppingCart, FileText, Settings, LogOut, Menu, Bell, Search, Moon, Sun } from 'lucide-react';
-import { clearSession, getRoleMenu, getStoredSession, getStoredSettings, SETTINGS_KEY } from '../lib/auth.js';
+import { clearSession, getRoleFromPath, getRoleMenu, getStoredSession, getStoredSettings, SETTINGS_KEY } from '../lib/auth.ts';
 import Footer from '../components/Footer.jsx';
 
 const iconMap = {
@@ -17,8 +17,8 @@ export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const session = getStoredSession();
-  const role = session?.role || 'salesperson';
+  const role = getRoleFromPath(location.pathname) || 'salesperson';
+  const session = getStoredSession(role);
   const basePath = role === 'admin' ? '/admin' : '/sales';
   const displayName = session?.displayName || session?.email || (role === 'admin' ? 'Admin' : 'Salesperson');
   
@@ -69,8 +69,8 @@ export default function MainLayout() {
   }, []);
 
   const handleLogout = () => {
-    clearSession();
-    navigate('/login');
+    clearSession(role);
+    navigate(role === 'admin' ? '/admin/login' : '/sales/login');
   };
 
   const toggleTheme = () => {
