@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getStoredSession } from '../lib/auth.ts';
+import { getRoleFromPath, getStoredSession } from '../lib/auth.ts';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5298/api';
 
@@ -9,7 +9,9 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const session = getStoredSession();
+  const pathName = typeof window !== 'undefined' ? window.location.pathname : '';
+  const scope = getRoleFromPath(pathName) || undefined;
+  const session = getStoredSession(scope);
   if (session?.token) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${session.token}`;
