@@ -12,6 +12,8 @@ This workspace is split into two top-level folders:
 
 - Dashboard with business overview
 - Admin and SalesPersons Panels
+- Multi-Session Handling
+- Role-Based Route Guarding
 - Product Management (CRUD)
 - Salesperson Management (CRUD)
 - Point of Sale (POS)
