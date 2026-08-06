@@ -15,34 +15,32 @@ import SalesRecordsPage from './pages/SalesRecordsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import { getDefaultPathForRole, getStoredSession } from './lib/auth.ts';
+import { getAnyStoredSession, getDefaultPathForRole, getStoredSession } from './lib/auth.ts';
 
-function ProtectedRoute({ children, roles }: { children: ReactNode; roles: Array<'admin' | 'salesperson'> }) {
-  const session = getStoredSession();
+function ProtectedRoute({ children, role, loginPath }: { children: ReactNode; role: 'admin' | 'salesperson'; loginPath: string }) {
+  const session = getStoredSession(role);
 
   if (!session?.token || !session.role) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (roles.length > 0 && !roles.includes(session.role)) {
-    return <Navigate to={getDefaultPathForRole(session.role)} replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
   return children;
 }
 
 function HomeRedirect() {
-  const session = getStoredSession();
-  return <Navigate to={session?.token && session.role ? getDefaultPathForRole(session.role) : '/login'} replace />;
+  const session = getAnyStoredSession();
+  return <Navigate to={session?.token && session.role ? getDefaultPathForRole(session.role) : '/admin/login'} replace />;
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+        <Route path="/admin/login" element={<LoginPage portalRole="admin" />} />
+        <Route path="/sales/login" element={<LoginPage portalRole="salesperson" />} />
         <Route path="/" element={<HomeRedirect />} />
-        <Route path="/admin" element={<ProtectedRoute roles={['admin']}><MainLayout /></ProtectedRoute>}>
+        <Route path="/admin" element={<ProtectedRoute role="admin" loginPath="/admin/login"><MainLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
@@ -51,7 +49,7 @@ export default function App() {
           <Route path="sales-records" element={<SalesRecordsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
-        <Route path="/sales" element={<ProtectedRoute roles={['salesperson']}><MainLayout /></ProtectedRoute>}>
+        <Route path="/sales" element={<ProtectedRoute role="salesperson" loginPath="/sales/login"><MainLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="pos" replace />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="settings" element={<SettingsPage />} />

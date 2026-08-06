@@ -1,4 +1,6 @@
 export const AUTH_SESSION_KEY = 'lumensoft-session';
+export const AUTH_ADMIN_SESSION_KEY = 'lumensoft-admin-session';
+export const AUTH_SALES_SESSION_KEY = 'lumensoft-sales-session';
 export const AUTH_FLAG_KEY = 'lumensoft-auth';
 export const SETTINGS_KEY = 'lumensoft-settings';
 
@@ -11,6 +13,8 @@ export type AuthSession = {
   displayName: string;
   salespersonId?: number | null;
 };
+
+export type SessionRoleScope = AppRole;
 
 export const DEFAULT_PATHS: Record<AppRole, string> = {
   admin: '/admin/dashboard',
@@ -57,31 +61,96 @@ const readJson = (key: string, fallback: unknown) => {
   }
 };
 
-export const getStoredSettings = () => ({ ...DEFAULT_SETTINGS, ...readJson(SETTINGS_KEY, {}) });
+const SESSION_KEYS: Record<SessionRoleScope, string> = {
+  admin: AUTH_ADMIN_SESSION_KEY,
+  salesperson: AUTH_SALES_SESSION_KEY,
+};
 
-export const getStoredSession = () => {
-  if (typeof window === 'undefined') {
-    return null;
+export const getRoleFromPath = (pathName: string): AppRole | null => {
+  if (pathName.startsWith('/admin')) {
+    return 'admin';
   }
 
-  const stored = readJson(AUTH_SESSION_KEY, null) as AuthSession | null;
-  if (stored?.role && stored?.email && stored?.token) {
-    return stored;
+  if (pathName.startsWith('/sales')) {
+    return 'salesperson';
   }
 
   return null;
 };
 
-export const saveSession = (session: AuthSession) => {
+const isValidSession = (value: unknown): value is AuthSession => {
+  const candidate = value as AuthSession | null;
+  return Boolean(candidate?.token && candidate?.role && candidate?.email);
+};
+
+const resolveScopeFromRuntime = (): SessionRoleScope | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return getRoleFromPath(window.location.pathname);
+};
+
+export const getStoredSettings = () => ({ ...DEFAULT_SETTINGS, ...readJson(SETTINGS_KEY, {}) });
+
+export const getStoredSession = (scope?: SessionRoleScope) => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const resolvedScope = scope ?? resolveScopeFromRuntime();
+  if (resolvedScope) {
+    const scopedSession = readJson(SESSION_KEYS[resolvedScope], null);
+    if (isValidSession(scopedSession) && scopedSession.role === resolvedScope) {
+      return scopedSession;
+    }
+    return null;
+  }
+
+  const legacySession = readJson(AUTH_SESSION_KEY, null);
+  if (isValidSession(legacySession)) {
+    return legacySession;
+  }
+
+  return null;
+};
+
+export const getAnyStoredSession = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const adminSession = getStoredSession('admin');
+  if (adminSession) {
+    return adminSession;
+  }
+
+  const salesSession = getStoredSession('salesperson');
+  if (salesSession) {
+    return salesSession;
+  }
+
+  return getStoredSession();
+};
+
+export const saveSession = (session: AuthSession, scope?: SessionRoleScope) => {
   if (typeof window === 'undefined') {
     return;
   }
 
-  window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+  const resolvedScope = scope ?? session.role;
+  window.localStorage.setItem(SESSION_KEYS[resolvedScope], JSON.stringify(session));
+  window.localStorage.removeItem(AUTH_SESSION_KEY);
 };
 
-export const clearSession = () => {
+export const clearSession = (scope?: SessionRoleScope) => {
   if (typeof window === 'undefined') {
+    return;
+  }
+
+  const resolvedScope = scope ?? resolveScopeFromRuntime();
+  if (resolvedScope) {
+    window.localStorage.removeItem(SESSION_KEYS[resolvedScope]);
     return;
   }
 
