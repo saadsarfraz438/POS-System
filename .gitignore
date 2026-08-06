@@ -29,3 +29,9 @@ backend/LumensoftPosApi/obj/
 backend/LumensoftPosApi/*.db
 backend/LumensoftPosApi/*.db-shm
 backend/LumensoftPosApi/*.db-wal
+
+# Configuration files containing secrets
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+.env
