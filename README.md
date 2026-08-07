@@ -20,6 +20,7 @@ It Includes
 * To enter or test the system, login by using following **Admin credentials**.
  * **Email:** **admin@lumensoft.com**
  * **Password:** **Admin@12345**
+ * It take 1 minute to login due to cold start
 * Enter the admin panel ,create the demo salesperson in salesperson screen.
 * set email and password for salesperson.
 * Go to login page  enter to salesperson panel by login using email and password you gave for demo salesperson.
