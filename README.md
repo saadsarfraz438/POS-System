@@ -113,8 +113,7 @@ backend/
     ├── appsettings.Development.json    # Development configuration overrides
     ├── Data/
     │   └── LumensoftDbContext.cs       # Entity Framework Core database context mapper
-    ├── Properties/
-    │   └── launchSettings.json         # Server profiles, ports (HTTP/HTTPS), and IIS configuration
+    ├── launchSettings.json         # Server profiles, ports (HTTP/HTTPS), and IIS configuration
     ├── bin/                            # Compiled machine code
     └── obj/                            # Intermediate build artifacts and NuGet package restoration caches
         ├── LumensoftPosApi.csproj.nuget.dgspec.json
