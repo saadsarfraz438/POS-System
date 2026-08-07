@@ -221,12 +221,14 @@ Developed as part of the Lumensoft Technologies Evaluation.
 # React + TypeScript + Vite
 ---
 ## Deployement:
-Future Deployment
+### Future Deployment
 ```
-Frontend on Vercel (Almost Completed)
-Backend and Database on Railway (Working)
+Frontend on Vercel (Completed)
+Backend and Database on Railway (completed)
 Databse on Azure (Completed)
 ```
+### Future Improvement:
+
 
 ## Contributing
 Contributions, suggestions, and feature requests are welcome. Feel free to fork the repository, create a new branch, and submit a pull request.
