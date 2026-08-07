@@ -26,7 +26,7 @@ It Includes
   
  [![Typing SVG](https://readme-typing-svg.demolab.com/?lines=Click+on+LinkButton+👇;To+Enter+POS-System👇)](https://git.io/typing-svg)
  
- [![POS-System](https://img.shields.io/badge/View%20POINT_OF_SALE-Click%20HERE-0A66C2?style=for-the-badge&logo=github&logoColor=white)](https://pos-system-saad438.vercel.app/admin/login)
+ [![POS-System](https://img.shields.io/badge/View%20POINT_OF_SALE-Click%20HERE-0A66C2?style=for-the-badge&logo=github&logoColor=white)](https://pos.sses.dev/)
 
 ---
 
@@ -225,6 +225,7 @@ Developed as part of the Lumensoft Technologies Evaluation.
 Frontend on Vercel (Completed)
 Backend and Database on Railway (completed)
 Databse on Azure (Completed)
+Custom Domain(working)
 ```
 ### Future Improvement:
 
