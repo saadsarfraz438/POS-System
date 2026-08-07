@@ -1,6 +1,6 @@
 # LumenSoft Point of Sale (POS) System
 
-A modern, fast, and secure Point of Sale (POS) application designed to streamline retail operations. This system automates checkout processes, tracks inventory in real-time, manages salepersons, and generates detailed sales analytics,the application is built using modern web technologies including React.js for the frontend, ASP.NET Core Web API for the backend, and SQL Server for database management.
+A modern, fast, and secure Point of Sale (POS) application designed to streamline retail operations. This system automates checkout processes, tracks inventory in real-time, manages salespersons, and generates detailed sales analytics,the application is built using modern web technologies including React.js for the frontend, ASP.NET Core Web API for the backend, and SQL Server for database management.
 It Includes 
 * **Dashboard:** Rich business overview metrics.
 * **Dual Panels:** Separate, dedicated interfaces for Admins and Salespersons.
@@ -14,6 +14,19 @@ It Includes
 * **Notifications:** Sweet Alert Notifications.
 * **Security & Validation:** Secure REST API integration, robust frontend form validation via React Hook Form, and backend role validation.
 * **UX Enrichments:** Responsive Bootstrap UI, dark mode toggle, and SweetAlert2 notifications.
+
+---
+## Test System:
+* To enter or test the system, login by using following **Admin credentials**.
+ * **Email:** **admin@lumensoft.com**
+ * **Password:** **Admin@12345**
+* Enter the admin panel ,create the demo salesperson in salesperson screen.
+* set email and password for salesperson.
+* Go to login page  enter to salesperson panel by login using email and password you gave for demo salesperson.
+  
+ [![Typing SVG](https://readme-typing-svg.demolab.com/?lines=Click+on+LinkButton+👇;To+Enter+POS-System👇)](https://git.io/typing-svg)
+ 
+ [![POS-System](https://img.shields.io/badge/View%20POINT_OF_SALE-Click%20HERE-0A66C2?style=for-the-badge&logo=github&logoColor=white)](https://pos-system-saad438.vercel.app/admin/login)
 
 ---
 
@@ -93,7 +106,7 @@ Frontend/
 
 backend/
 └── LumensoftPosApi/
-    ├── LumensoftPosApi.csproj          # Dependencies, and target framework (.NET 9)
+    ├── LumensoftPosApi.csproj          # Dependencies, and target framework (.NET 10)
     ├── Program.cs                      # Application entry point
     ├── Models.cs                       # Data models and Entity Framework entities
     ├── appsettings.json                # Global configuration settings
