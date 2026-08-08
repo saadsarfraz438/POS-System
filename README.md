@@ -226,7 +226,8 @@ Developed as part of the Lumensoft Technologies Evaluation.
 Frontend on Vercel (Completed)
 Backend and Database on Railway (completed)
 Databse on Azure (Completed)
-Custom Domain(working)
+Custom Domain (Completed)
+
 ```
 ### Future Improvement:
 
