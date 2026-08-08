@@ -153,7 +153,7 @@ dotnet run
 ## Functioning:
 Login Page for Admin and Salesperson
 
-![App Screenshot](frontend/assets/1.png)
+![App Screenshot](frontend/assets/login%20page%201.png)
 
 Admin Dashboard
 ![App Screenshot](frontend/assets/2.png)
