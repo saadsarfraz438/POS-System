@@ -60,7 +60,7 @@ export default function LoginPage({ portalRole = null }) {
       <div className="card shadow border-0 auth-card">
         <div className="card-body p-4 p-md-5">
           <div className="mb-4 text-center">
-            <span className="badge rounded-pill text-bg-primary mb-3 fs-5 px-4 py-2">Lumensoft POS</span>
+            <span className="badge rounded-pill text-bg-primary mb-3 fs-5 px-4 py-2">Smart POS</span>
           </div>
 
           <div className="mb-4 text-center">
